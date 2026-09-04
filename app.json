@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Pesan",
+    "slug": "pesan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pesan",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pesan.chat"
+    },
+    "android": {
+      "package": "com.pesan.chat",
+      "adaptiveIcon": {
+        "backgroundColor": "#34C759",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}

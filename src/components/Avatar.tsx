@@ -1,0 +1,28 @@
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { AVATAR_COLORS } from '../theme';
+import { initials } from '../lib/format';
+
+type Props = { name: string; color: number; size?: number };
+
+export function Avatar({ name, color, size = 50 }: Props) {
+  const background = AVATAR_COLORS[color % AVATAR_COLORS.length];
+  return (
+    <View
+      style={[
+        styles.circle,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: background },
+      ]}
+    >
+      <Text style={[styles.text, { fontSize: size * 0.4 }]} numberOfLines={1}>
+        {initials(name)}
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  circle: { alignItems: 'center', justifyContent: 'center' },
+  text: { color: '#FFFFFF', fontWeight: '500' },
+});

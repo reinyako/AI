@@ -1,70 +1,90 @@
-# Pesan — Chat AI dengan UI ala iMessage
+# Pesan — chatbot AI dengan tampilan iMessage
 
-Platform chat ke AI (Claude) yang tampilannya dibuat semirip mungkin dengan **iMessage di iPhone**:
-gelembung biru–abu dengan ekor, indikator "sedang mengetik", transisi push ala iOS, dark mode,
-dan bisa dipasang ke Home Screen sebagai PWA (tampil full-screen tanpa address bar).
+Aplikasi **React Native (Expo)** untuk iPhone: ngobrol dengan karakter AI, tapi rasanya seperti
+chatting dengan orang sungguhan di iMessage. Model dipanggil lewat **OpenRouter** memakai API key
+milikmu sendiri — mirip cara orang pakai proxy di Janitor AI.
 
 <p align="center">
-  <img src="docs/screenshot-list.png" width="260" alt="Daftar percakapan" />
-  <img src="docs/screenshot-chat.png" width="260" alt="Percakapan" />
+  <img src="docs/screenshot-list.png" width="250" alt="Daftar percakapan" />
+  <img src="docs/screenshot-chat.png" width="250" alt="Percakapan" />
+  <img src="docs/screenshot-settings.png" width="250" alt="Pengaturan" />
 </p>
 
 ## Fitur
 
-- **UI iMessage**: gelembung dengan ekor, pengelompokan pesan, penanda waktu (`Hari ini 14.42`),
-  label "Terkirim", tapback ❤️ (ketuk dua kali gelembung), dan animasi pop saat pesan muncul.
-- **Streaming**: balasan muncul huruf per huruf lewat SSE, lengkap dengan indikator titik-titik.
-- **Banyak "kontak" AI**: tiap percakapan punya nama, warna avatar, dan karakter (system prompt) sendiri.
-- **Riwayat tersimpan** di `localStorage` perangkat — tidak ada database, tidak ada data yang menumpuk di server.
-- **Siap iPhone**: `viewport-fit=cover` + safe area, tidak zoom saat mengetik, dark mode otomatis,
-  penyesuaian saat keyboard muncul, ikon Home Screen.
-- **API key aman di server**: browser tidak pernah menyentuh key; semua permintaan lewat `/api/chat`.
+- **Tampilan iMessage** — gelembung biru/abu berekor, pengelompokan pesan, penanda waktu
+  (`Hari ini 15.10`), label "Terkirim", indikator titik-titik saat mengetik, dan tapback ❤️
+  (ketuk dua kali gelembung).
+- **Terasa seperti orang beneran** — instruksi global bikin model membalas pendek dan santai tanpa
+  gaya asisten, ditambah "jeda mengetik" acak sebelum balasan muncul.
+- **Kontak = karakter** — tiap percakapan punya nama, warna avatar, sapaan pembuka, dan persona
+  (system prompt) sendiri.
+- **Kontrol generasi** — model, temperature, top-p, panjang balasan, dan seberapa banyak pesan lama
+  yang diingat. Bisa diatur global maupun per kontak.
+- **Regenerate & edit** — tahan sebuah gelembung untuk menyalin, mengulang balasan, mengedit pesanmu
+  lalu kirim ulang, atau menghapus percakapan dari titik itu ke bawah.
+- **Pemilih model OpenRouter** — daftar model diambil langsung dari akunmu, lengkap dengan harga per
+  1 juta token dan filter "hanya model gratis".
+- **Data tersimpan di HP** — riwayat chat di AsyncStorage, API key di penyimpanan aman
+  (Keychain lewat `expo-secure-store`). Tidak ada server perantara.
+- Dark mode otomatis dan streaming balasan huruf per huruf.
 
-## Menjalankan
+## Menjalankan (laptop Windows + iPhone)
 
 ```bash
 npm install
-cp .env.example .env      # lalu isi ANTHROPIC_API_KEY
-npm start                 # http://localhost:3000
+npx expo start
 ```
 
-Ambil API key di <https://console.anthropic.com/settings/keys>.
+1. Install **Expo Go** dari App Store di iPhone.
+2. Pastikan iPhone dan laptop tersambung ke Wi-Fi yang sama.
+3. Scan QR code yang muncul di terminal pakai kamera iPhone → terbuka di Expo Go.
+   Kalau Wi-Fi kantor/kampus memblokir koneksi antar-perangkat, jalankan `npx expo start --tunnel`.
+4. Di aplikasi, buka **⚙️ Pengaturan** → tempel **API key OpenRouter** (ambil di
+   <https://openrouter.ai/keys>).
+5. Pilih model lewat **Pengaturan → Model**, lalu mulai chat.
 
-### Membuka dari iPhone
+Perintah lain:
 
-1. Pastikan iPhone dan komputer berada di Wi-Fi yang sama.
-2. Cari IP komputer (`ipconfig getifaddr en0` di macOS, `hostname -I` di Linux).
-3. Buka `http://<ip-komputer>:3000` di Safari.
-4. Tekan tombol **Share → Add to Home Screen** supaya jalan full-screen seperti aplikasi asli.
+```bash
+npm run typecheck   # cek TypeScript
+npm run web         # pratinjau di browser (untuk cek tampilan cepat)
+node scripts/make-icon.mjs   # buat ulang ikon aplikasi
+```
 
-Untuk akses dari luar jaringan lokal, deploy ke host Node mana pun (Railway, Fly.io, Render, VPS)
-lalu set environment variable `ANTHROPIC_API_KEY`.
+## Biaya & API key
 
-## Konfigurasi
+Aplikasi ini tidak punya key bawaan — kamu pakai key sendiri, jadi pemakaian dibayar dari kredit
+OpenRouter-mu. Beberapa model di OpenRouter gratis; nyalakan filter **"Hanya model gratis"** di layar
+pemilih model kalau mau coba-coba tanpa biaya. **Pengaturan → Cek key & kredit** menampilkan sisa
+pemakaian key-mu.
 
-| Variabel | Default | Keterangan |
-| --- | --- | --- |
-| `ANTHROPIC_API_KEY` | — | Wajib. Tanpa ini `/api/chat` menolak permintaan. |
-| `PORT` | `3000` | Port server. |
-| `MODEL` | `claude-opus-5` | Model yang dipakai. |
+Model bawaan diisi `anthropic/claude-3.5-sonnet`. Kalau slug itu sudah tidak ada di OpenRouter,
+aplikasi akan memberi tahu ("Model itu tidak ada di OpenRouter") — tinggal pilih model lain dari
+daftar.
 
 ## Struktur
 
 ```
-server.js              Server HTTP (static + proxy streaming ke Claude)
-public/index.html      Kerangka dua layar: daftar pesan & percakapan
-public/styles.css      Seluruh tampilan iMessage (gelembung, ekor, nav, composer)
-public/app.js          State, penyimpanan lokal, render thread, streaming SSE
-scripts/make-icons.mjs Generator ikon PNG aplikasi (tanpa dependensi)
+App.tsx                      Navigasi (native stack) + provider
+src/api/openrouter.ts        Streaming SSE, daftar model, info kredit
+src/store/StoreProvider.tsx  State global, AsyncStorage, SecureStore, prompt global
+src/screens/ChatsScreen      Daftar percakapan (large title + search bar iOS)
+src/screens/ChatScreen       Thread, streaming, composer, menu aksi pesan
+src/screens/ContactScreen    Editor kontak/karakter + kontrol generasi per kontak
+src/screens/SettingsScreen   API key, default generasi, instruksi global
+src/screens/ModelPickerScreen Daftar model OpenRouter + pencarian
+src/components/Bubble.tsx    Gelembung iMessage lengkap dengan ekornya
 ```
 
 ## Catatan teknis
 
-- Endpoint `POST /api/chat` menerima `{ persona, messages: [{role, content}] }` dan membalas
-  `text/event-stream` berisi event `thinking`, `text`, `error`, dan `done`.
-- Riwayat dibersihkan di server: dibatasi 200 pesan terakhir, hanya teks, peran diselang-seling,
-  dan harus diakhiri pesan pengguna.
-- System prompt di-*cache* (`cache_control: ephemeral`) supaya percakapan panjang lebih murah.
-- Adaptive thinking aktif dengan ringkasan yang ditampilkan sebagai teks kecil selagi AI berpikir.
-- `fallbacks: "default"` dinyalakan, jadi kalau satu model menolak permintaan, permintaan yang sama
-  otomatis dijalankan ulang di model cadangan dalam satu panggilan.
+- React Native belum mendukung `fetch` streaming, jadi SSE dibaca lewat `XMLHttpRequest`:
+  `responseText` yang terus bertambah dipotong per frame `data:` di `onprogress`
+  (lihat `src/api/openrouter.ts`). Baris keep-alive `: OPENROUTER PROCESSING` diabaikan.
+- Ekor gelembung dibuat dari dua `View` — satu berwarna gelembung yang menyembul keluar, satu lagi
+  berwarna latar untuk melengkungkannya — sehingga tidak perlu SVG.
+- Riwayat yang dikirim ke model dipotong sesuai setelan "Ingatan percakapan" biar biaya tidak
+  membengkak di percakapan panjang.
+- Semua paket yang dipakai tersedia di Expo Go, jadi tidak perlu build native (`expo prebuild`)
+  maupun Mac.
