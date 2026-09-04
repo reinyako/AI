@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Pesan</title>
+<meta name="description" content="Ngobrol dengan AI lewat tampilan ala iMessage." />
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Pesan" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icons/icon-180.png" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<!-- ============ Layar 1: Daftar percakapan ============ -->
+<section class="screen screen--list" id="screen-list">
+  <header class="nav">
+    <div class="nav__row">
+      <button class="nav__action nav__action--left" id="btn-edit" type="button">Edit</button>
+      <h1 class="nav__title">Pesan</h1>
+      <button class="nav__action nav__action--right" id="btn-new" type="button" aria-label="Percakapan baru">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path d="M4 20h3.6l9.4-9.4-3.6-3.6L4 16.4V20z" fill="currentColor"/>
+          <path d="M18.9 5.1a1.6 1.6 0 0 0-2.3 0l-1.3 1.3 3.6 3.6 1.3-1.3a1.6 1.6 0 0 0 0-2.3l-1.3-1.3z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    <div class="searchbar">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M10.5 3a7.5 7.5 0 1 1-4.9 13.2l-3.4 3.4a1 1 0 0 1-1.4-1.4l3.4-3.4A7.5 7.5 0 0 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z" fill="currentColor"/>
+      </svg>
+      <input id="search" type="search" placeholder="Cari" autocomplete="off" enterkeyhint="search" />
+    </div>
+  </header>
+
+  <div class="list" id="chat-list"></div>
+
+  <p class="list__footer" id="list-footer"></p>
+</section>
+
+<!-- ============ Layar 2: Percakapan ============ -->
+<section class="screen screen--chat" id="screen-chat" aria-hidden="true">
+  <header class="chatnav">
+    <button class="chatnav__back" id="btn-back" type="button">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M15.4 4.6a1.1 1.1 0 0 1 0 1.6L9.6 12l5.8 5.8a1.1 1.1 0 1 1-1.6 1.6l-6.6-6.6a1.1 1.1 0 0 1 0-1.6l6.6-6.6a1.1 1.1 0 0 1 1.6 0z" fill="currentColor"/>
+      </svg>
+      <span>Pesan</span>
+    </button>
+    <div class="chatnav__peer">
+      <div class="avatar avatar--sm" id="peer-avatar"></div>
+      <div class="chatnav__name" id="peer-name">AI</div>
+    </div>
+    <button class="chatnav__info" id="btn-info" type="button" aria-label="Info">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 1.8a8.2 8.2 0 1 0 0 16.4 8.2 8.2 0 0 0 0-16.4zM12 10a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1zm0-3.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z" fill="currentColor"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="thread" id="thread"></div>
+
+  <form class="composer" id="composer" autocomplete="off">
+    <button class="composer__plus" id="btn-clear" type="button" aria-label="Bersihkan percakapan">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M12 5a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H6a1 1 0 1 1 0-2h5V6a1 1 0 0 1 1-1z" fill="currentColor"/>
+      </svg>
+    </button>
+    <div class="composer__field">
+      <textarea id="input" rows="1" placeholder="iMessage" enterkeyhint="send"></textarea>
+      <button class="composer__send" id="btn-send" type="submit" aria-label="Kirim" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M12 4.6c.3 0 .5.1.7.3l5.2 5.2a1 1 0 0 1-1.4 1.4L13 8v11a1 1 0 1 1-2 0V8l-3.5 3.5a1 1 0 1 1-1.4-1.4l5.2-5.2c.2-.2.4-.3.7-.3z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ Sheet: buat / edit kontak AI ============ -->
+<div class="sheet" id="sheet" aria-hidden="true">
+  <div class="sheet__backdrop" data-close></div>
+  <form class="sheet__panel" id="sheet-form">
+    <div class="sheet__grabber"></div>
+    <h2 class="sheet__title" id="sheet-title">Kontak baru</h2>
+
+    <label class="field">
+      <span>Nama</span>
+      <input id="f-name" type="text" maxlength="24" placeholder="mis. Rio" required />
+    </label>
+
+    <label class="field">
+      <span>Karakter / instruksi</span>
+      <textarea id="f-persona" rows="4" maxlength="1500" placeholder="mis. Teman ngobrol santai yang jago masak dan suka bercanda."></textarea>
+    </label>
+
+    <div class="field">
+      <span>Warna</span>
+      <div class="swatches" id="f-colors"></div>
+    </div>
+
+    <div class="sheet__actions">
+      <button type="button" class="btn btn--ghost" data-close>Batal</button>
+      <button type="submit" class="btn btn--primary">Simpan</button>
+    </div>
+    <button type="button" class="btn btn--danger" id="f-delete" hidden>Hapus percakapan</button>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>

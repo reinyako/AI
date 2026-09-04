@@ -1,0 +1,16 @@
+{
+  "name": "imessage-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chat platform ke AI dengan UI ala iMessage, dioptimalkan untuk iPhone (PWA).",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0"
+  }
+}
