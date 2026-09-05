@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.pesan.chat"
+      "bundleIdentifier": "com.pesan.chat",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.pesan.chat",
@@ -39,6 +42,12 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "56b7d91f-03cd-4a4f-9d84-df7dce3795ed"
+      }
+    },
+    "owner": "reinyako"
   }
 }
