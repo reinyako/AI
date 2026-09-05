@@ -8,8 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { connectionFor, streamChat, validate, type WireMessage } from '../api/chat';
-import { Avatar } from '../components/Avatar';
 import { Bubble } from '../components/Bubble';
+import { ChatHeader } from '../components/ChatHeader';
 import { DayMark } from '../components/DayMark';
 import { ErrorNotice } from '../components/Form';
 import { TypingDots } from '../components/TypingDots';
@@ -63,6 +63,8 @@ export function ChatScreen({ route, navigation }: Props) {
    * supaya pesan terakhir tidak tertutup panel pengetik.
    */
   const [bottomHeight, setBottomHeight] = useState(0);
+  /** Tinggi header yang melayang, dipakai sebagai ruang di ujung atas daftar. */
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const listRef = useRef<FlatList<Row>>(null);
   const bufferRef = useRef('');
@@ -96,59 +98,16 @@ export function ChatScreen({ route, navigation }: Props) {
   }, [contact, store]);
 
   useLayoutEffect(() => {
-    if (!contact) return;
-    navigation.setOptions({
-      headerTitle: () => (
-        <View style={styles.peer}>
-          <Avatar
-            name={contact.name}
-            color={contact.color}
-            size={SHAPE.glass ? 34 : 30}
-            agent={contact.kind === 'agent'}
-          />
-          {SHAPE.glass ? (
-            // Di iOS 26 nama duduk di kapsul Liquid Glass dengan tanda panah,
-            // seperti tombol info kontak di iMessage.
-            <Pressable
-              style={styles.peerPill}
-              onPress={() => navigation.navigate('Contact', { id: contact.id })}
-            >
-              <GlassView
-                style={[StyleSheet.absoluteFill, styles.peerPillFill]}
-                glassEffectStyle="regular"
-                isInteractive
-              />
-              <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
-                {contact.name}
-              </Text>
-              <Ionicons name="chevron-forward" size={10} color={theme.label2} />
-            </Pressable>
-          ) : (
-            <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
-              {contact.name}
-            </Text>
-          )}
-        </View>
-      ),
-      headerRight: () => (
-        <Pressable hitSlop={12} onPress={() => navigation.navigate('Contact', { id: contact.id })}>
-          <Ionicons name="information-circle-outline" size={24} color={theme.blue} />
-        </Pressable>
-      ),
-      /**
-       * Pesan sengaja TIDAK dibuat mengalir di belakang navigation bar.
-       *
-       * Dengan `headerTransparent`, iOS 26 memasang scroll edge effect bawaannya —
-       * peredupan yang menyelubungi seluruh percakapan pada daftar yang dibalik, dan
-       * hilang-timbul mengikuti posisi gulir. Efek itu tidak bisa dimatikan dari sini:
-       * opsi `scrollEdgeEffects` memang ada di tipe TypeScript-nya, tapi belum
-       * diimplementasikan di sisi native react-native-screens 4.26.
-       *
-       * Jadi header dibiarkan memakan ruang seperti biasa, dengan latar tembus pandang
-       * dari App.tsx supaya tetap menyatu dengan latar layar.
-       */
-    });
-  }, [navigation, contact, theme]);
+    /**
+     * Layar ini memakai header buatan sendiri (lihat components/ChatHeader).
+     * Navigation bar native dimatikan karena tampilannya di-reset iOS saat aplikasi
+     * kembali dari latar belakang, dan iOS 26 memasang scroll edge effect yang
+     * menyelubungi seluruh percakapan begitu isinya lewat di bawah bar itu.
+     * Gestur geser-untuk-kembali tidak ikut hilang: itu datang dari native-stack,
+     * bukan dari headernya.
+     */
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   /**
    * Karena daftarnya `inverted`, pesan terbaru ada di offset 0 — jadi "turun ke
@@ -411,7 +370,12 @@ export function ChatScreen({ route, navigation }: Props) {
            * membuat pesan terakhir tetap bisa digulir keluar dari balik panel pengetik
            * yang melayang di atasnya.
            */
-          contentContainerStyle={SHAPE.glass ? { paddingTop: bottomSpace } : undefined}
+          /**
+           * Daftarnya inverted, jadi `paddingTop` muncul di bawah dan `paddingBottom`
+           * di atas. Keduanya memberi ruang supaya pesan pertama dan terakhir bisa
+           * digulir keluar dari balik header dan panel pengetik yang melayang.
+           */
+          contentContainerStyle={{ paddingTop: bottomSpace, paddingBottom: headerHeight }}
           /**
            * Daftar dibalik seperti aplikasi chat pada umumnya: pesan terbaru ada di
            * offset 0. Dengan begitu "berada di paling bawah" jadi posisi diamnya —
@@ -564,28 +528,20 @@ export function ChatScreen({ route, navigation }: Props) {
             </View>
           </View>
         </View>
+        <View style={styles.topOverlay}>
+          <ChatHeader
+            contact={contact}
+            onBack={() => navigation.goBack()}
+            onInfo={() => navigation.navigate('Contact', { id: contact.id })}
+            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+          />
+        </View>
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  peer: { alignItems: 'center', gap: 2 },
-  peerName: { fontSize: 12, lineHeight: 14, fontWeight: '500', maxWidth: 160 },
-  // Kapsul dibuat serapat mungkin: nav bar iOS punya tinggi tetap, jadi avatar
-  // 34 + kapsul ini harus tetap muat tanpa terpotong.
-  peerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 1,
-    paddingLeft: 9,
-    paddingRight: 6,
-    paddingVertical: 1,
-    borderRadius: 9,
-    overflow: 'hidden',
-  },
-  peerPillFill: { borderRadius: 9 },
-
   footer: { paddingBottom: 10 },
   footerRow: { paddingHorizontal: SHAPE.gutter, marginTop: 10 },
   receipt: { textAlign: 'right', fontSize: 11, paddingRight: SHAPE.gutter, paddingTop: 3 },
@@ -599,6 +555,8 @@ const styles = StyleSheet.create({
   // Panel bawah melayang di atas daftar supaya pesan bisa lewat di belakangnya.
   // Ia ikut tergeser bersama seluruh isi layar saat papan ketik membuka.
   bottomOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  // Header ikut melayang, supaya pesan lewat memudar di belakangnya.
+  topOverlay: { position: 'absolute', left: 0, right: 0, top: 0 },
 
   composer: {
     flexDirection: 'row',
