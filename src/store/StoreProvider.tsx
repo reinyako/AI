@@ -2,7 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { AppState, Contact, ContactKind, GenOverrides, GenSettings, Message, Provider } from '../types';
+import type {
+  AppState,
+  Contact,
+  ContactKind,
+  GenOverrides,
+  GenSettings,
+  Message,
+  Provider,
+  ThemeMode,
+} from '../types';
 import { GEN_KEYS } from '../lib/gen';
 import { normalizeBaseUrl } from '../api/chat';
 import { uid } from '../lib/format';
@@ -100,6 +109,7 @@ function initialState(): AppState {
     agentPrompt: DEFAULT_AGENT_PROMPT,
     providers: [openrouterProvider()],
     activeProviderId: OPENROUTER_ID,
+    themeMode: 'system',
   };
 }
 
@@ -197,6 +207,7 @@ function reconcile(raw: any): AppState {
     agentPrompt: typeof raw.agentPrompt === 'string' ? raw.agentPrompt : DEFAULT_AGENT_PROMPT,
     providers,
     activeProviderId,
+    themeMode: raw.themeMode === 'light' || raw.themeMode === 'dark' ? raw.themeMode : 'system',
   };
 }
 
@@ -224,6 +235,7 @@ type StoreValue = {
   setDefaults: (patch: Partial<GenSettings>) => void;
   setGlobalPrompt: (prompt: string) => void;
   setAgentPrompt: (prompt: string) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   resetEverything: () => Promise<void>;
 };
 
@@ -383,8 +395,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setDefaults: (patch) => setState((prev) => ({ ...prev, defaults: { ...prev.defaults, ...patch } })),
       setGlobalPrompt: (prompt) => setState((prev) => ({ ...prev, globalPrompt: prompt })),
       setAgentPrompt: (prompt) => setState((prev) => ({ ...prev, agentPrompt: prompt })),
+      setThemeMode: (mode) => setState((prev) => ({ ...prev, themeMode: mode })),
       resetEverything: async () => {
-        setState((prev) => ({ ...initialState(), providers: prev.providers, activeProviderId: prev.activeProviderId }));
+        // Konfigurasi koneksi dan pilihan tema itu preferensi, bukan isi percakapan.
+        setState((prev) => ({
+          ...initialState(),
+          providers: prev.providers,
+          activeProviderId: prev.activeProviderId,
+          themeMode: prev.themeMode,
+        }));
         await AsyncStorage.removeItem(STATE_KEY).catch(() => {});
       },
     };

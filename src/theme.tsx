@@ -74,7 +74,14 @@ const ThemeContext = createContext<typeof light | null>(null);
  * di dalam sel FlatList tidak ikut menggambar ulang saat mode gelap/terang diganti
  * selagi aplikasi terbuka, sedangkan perubahan context menembus bailout itu.
  */
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({
+  mode = 'system',
+  children,
+}: {
+  /** `system` mengikuti setelan perangkat; selain itu temanya dikunci. */
+  mode?: 'system' | 'light' | 'dark';
+  children: React.ReactNode;
+}) {
   const [scheme, setScheme] = useState(() => Appearance.getColorScheme());
 
   useEffect(() => {
@@ -100,7 +107,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = scheme === 'dark' ? dark : light;
+  const resolved = mode === 'system' ? scheme : mode;
+  const value = resolved === 'dark' ? dark : light;
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

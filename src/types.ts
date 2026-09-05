@@ -52,6 +52,9 @@ export type Provider = {
   builtin?: boolean;
 };
 
+/** Pilihan tema: ikut sistem, atau dikunci terang/gelap. */
+export type ThemeMode = 'system' | 'light' | 'dark';
+
 export type AppState = {
   contacts: Contact[];
   defaults: GenSettings;
@@ -61,6 +64,7 @@ export type AppState = {
   agentPrompt: string;
   providers: Provider[];
   activeProviderId: string;
+  themeMode: ThemeMode;
 };
 
 /**

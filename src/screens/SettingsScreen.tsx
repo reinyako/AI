@@ -2,7 +2,17 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 
-import { ChoiceRow, Divider, InfoRow, LinkRow, Section, SliderRow, SwitchRow, TextRow } from '../components/Form';
+import {
+  ChoiceRow,
+  Divider,
+  InfoRow,
+  LinkRow,
+  Section,
+  SegmentRow,
+  SliderRow,
+  SwitchRow,
+  TextRow,
+} from '../components/Form';
 import { UI_MODE_LABEL } from '../lib/platform';
 import type { RootStackParamList } from '../navigation';
 import { DEFAULT_AGENT_PROMPT, DEFAULT_GLOBAL_PROMPT, useStore } from '../store/StoreProvider';
@@ -134,8 +144,19 @@ export function SettingsScreen({ navigation }: Props) {
 
       <Section
         title="Tampilan"
-        footer="Di iOS 26 panel pengetik dan kartu memakai Liquid Glass dengan sudut lebih membulat, dan latar header diserahkan ke sistem. Di iOS 18 ke bawah dipakai bilah rapat dengan warna dari tema aplikasi."
+        footer="“Sistem” mengikuti setelan terang/gelap perangkat. Mode tampilan di bawahnya ditentukan versi iOS: di iOS 26 panel pengetik dan kartu memakai Liquid Glass dengan sudut lebih membulat."
       >
+        <SegmentRow
+          label="Tema"
+          value={store.state.themeMode}
+          onChange={store.setThemeMode}
+          options={[
+            { value: 'system', label: 'Sistem' },
+            { value: 'light', label: 'Terang' },
+            { value: 'dark', label: 'Gelap' },
+          ]}
+        />
+        <Divider />
         <InfoRow label="Mode tampilan" value={UI_MODE_LABEL} />
       </Section>
 

@@ -12,7 +12,7 @@ import { ContactScreen } from './src/screens/ContactScreen';
 import { ModelPickerScreen } from './src/screens/ModelPickerScreen';
 import { ProviderScreen } from './src/screens/ProviderScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { StoreProvider } from './src/store/StoreProvider';
+import { StoreProvider, useStore } from './src/store/StoreProvider';
 import { SHAPE, ThemeProvider, useTheme } from './src/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -113,14 +113,25 @@ function Shell() {
   );
 }
 
+/**
+ * Pilihan tema tersimpan di store, jadi StoreProvider harus berada di luar
+ * ThemeProvider — bukan sebaliknya seperti sebelumnya.
+ */
+function Themed() {
+  const store = useStore();
+  return (
+    <ThemeProvider mode={store.state.themeMode}>
+      <Shell />
+    </ThemeProvider>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <StoreProvider>
-          <Shell />
-        </StoreProvider>
-      </ThemeProvider>
+      <StoreProvider>
+        <Themed />
+      </StoreProvider>
     </SafeAreaProvider>
   );
 }

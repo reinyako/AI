@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { RichText } from './RichText';
 import { SHAPE, useTheme } from '../theme';
 import type { Message } from '../types';
 
@@ -91,9 +92,18 @@ export function Bubble({ message, tail, groupStart, fresh, onLongPress, onDouble
               />
             </>
           )}
-          <Text style={[styles.text, { color: foreground }]} selectable>
-            {message.text}
-          </Text>
+          {/*
+            Penanda markdown hanya digambar untuk balasan model. Pesan yang kamu
+            ketik sendiri ditampilkan apa adanya — kalau kamu menulis bintang, yang
+            muncul memang bintang.
+          */}
+          {outgoing ? (
+            <Text style={[styles.text, { color: foreground }]} selectable>
+              {message.text}
+            </Text>
+          ) : (
+            <RichText text={message.text} style={[styles.text, { color: foreground }]} color={foreground} />
+          )}
         </Animated.View>
 
         {message.reaction ? (
