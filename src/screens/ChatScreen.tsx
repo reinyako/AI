@@ -46,6 +46,8 @@ const COMPOSER_PAD = 10;
 const CONTROL_SIZE = 40;
 /** Jarak tombol kirim ke tepi dalam kolom teks di iOS 26. */
 const SEND_INSET = 5;
+/** Jarak atas panel pengetik; ikut dipakai untuk menaksir tingginya sebelum diukur. */
+const COMPOSER_TOP = 7;
 
 const GROUP_GAP = 60_000; // jeda yang memutus satu rentetan gelembung
 const DAY_GAP = 30 * 60_000; // jeda yang memunculkan penanda waktu
@@ -146,22 +148,18 @@ export function ChatScreen({ route, navigation }: Props) {
           <Ionicons name="information-circle-outline" size={24} color={theme.blue} />
         </Pressable>
       ),
-      // Di iOS 26 pesan mengalir di belakang navigation bar. Gradiennya digambar
-      // sendiri di dalam layar (lihat `topFade`), bukan lewat `headerBackground`:
-      // opsi itu tidak dipotong ke area bar di native-stack, jadi gradiennya
-      // melebar menutupi seluruh layar.
-      ...(SHAPE.glass
-        ? {
-            headerTransparent: true,
-            /**
-             * iOS 26 secara bawaan memburamkan isi ScrollView yang lewat di bawah
-             * elemen bar. Pada daftar yang dibalik, efek itu menyelubungi seluruh
-             * percakapan, bukan cuma tepinya — gradien di sini sudah menangani
-             * peredupannya sendiri, jadi efek bawaannya dimatikan.
-             */
-            scrollEdgeEffects: { top: 'hidden' as const, bottom: 'hidden' as const },
-          }
-        : null),
+      /**
+       * Pesan sengaja TIDAK dibuat mengalir di belakang navigation bar.
+       *
+       * Dengan `headerTransparent`, iOS 26 memasang scroll edge effect bawaannya —
+       * peredupan yang menyelubungi seluruh percakapan pada daftar yang dibalik, dan
+       * hilang-timbul mengikuti posisi gulir. Efek itu tidak bisa dimatikan dari sini:
+       * opsi `scrollEdgeEffects` memang ada di tipe TypeScript-nya, tapi belum
+       * diimplementasikan di sisi native react-native-screens 4.26.
+       *
+       * Jadi header dibiarkan memakan ruang seperti biasa, dengan latar tembus pandang
+       * dari App.tsx supaya tetap menyatu dengan latar layar.
+       */
     });
   }, [navigation, contact, theme]);
 
@@ -175,6 +173,15 @@ export function ChatScreen({ route, navigation }: Props) {
    * tidak bergantung pada animasi gulir yang bisa tidak jalan.
    */
   const scrollToBottom = () => listRef.current?.scrollToOffset({ offset: 0, animated: false });
+
+  const composerBottomPad = keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8;
+  /**
+   * Ruang di ujung daftar supaya pesan terakhir tidak tertutup panel pengetik yang
+   * melayang. Hasil pengukuran `onLayout` dipakai begitu ada; sebelum itu tingginya
+   * ditaksir dari ukuran panelnya sendiri, jadi tidak ada bingkai pertama yang
+   * menyembunyikan pesan.
+   */
+  const bottomSpace = bottomHeight || COMPOSER_TOP + CONTROL_SIZE + composerBottomPad;
 
   const rows = useMemo<Row[]>(() => {
     if (!contact) return [];
@@ -402,13 +409,7 @@ export function ChatScreen({ route, navigation }: Props) {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      /**
-       * `keyboardVerticalOffset` memberi tahu KeyboardAvoidingView berapa banyak
-       * layar yang sudah dipakai di atasnya. Dengan `headerTransparent`, layar ini
-       * mulai dari ujung atas — header tidak memakan ruang — jadi menambahkan tinggi
-       * header lagi membuat panel pengetik terangkat sejauh itu dari papan ketik.
-       */
-      keyboardVerticalOffset={SHAPE.glass ? 0 : headerHeight}
+      keyboardVerticalOffset={headerHeight}
     >
       {/*
         Wadah tanpa padding untuk menampung panel bawah yang melayang. Kalau panel
@@ -421,13 +422,11 @@ export function ChatScreen({ route, navigation }: Props) {
           ref={listRef}
           style={styles.list}
           /**
-           * Daftarnya inverted, jadi `paddingTop` muncul di bawah dan `paddingBottom`
-           * di atas. Ruang ini yang membuat pesan pertama dan terakhir tetap bisa
-           * digulir keluar dari balik panel yang melayang.
+           * Daftarnya inverted, jadi `paddingTop` muncul di bawah. Ruang ini yang
+           * membuat pesan terakhir tetap bisa digulir keluar dari balik panel pengetik
+           * yang melayang di atasnya.
            */
-          contentContainerStyle={
-            SHAPE.glass ? { paddingTop: bottomHeight, paddingBottom: headerHeight } : undefined
-          }
+          contentContainerStyle={SHAPE.glass ? { paddingTop: bottomSpace } : undefined}
           /**
            * Daftar dibalik seperti aplikasi chat pada umumnya: pesan terbaru ada di
            * offset 0. Dengan begitu "berada di paling bawah" jadi posisi diamnya —
@@ -494,7 +493,7 @@ export function ChatScreen({ route, navigation }: Props) {
                     // masing-masing berdiri sebagai gelembung Liquid Glass sendiri,
                     // seperti panel pengetik iMessage. Wadah ini hanya mengatur jarak.
                     styles.composerGlass,
-                    { paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8 },
+                    { paddingBottom: composerBottomPad },
                   ]
                 : {
                     borderTopWidth: StyleSheet.hairlineWidth,
@@ -580,15 +579,6 @@ export function ChatScreen({ route, navigation }: Props) {
             </View>
           </View>
         </View>
-
-        {SHAPE.glass ? (
-          <LinearGradient
-            colors={[theme.bg, theme.bg, theme.bgFade]}
-            locations={[0, 0.55, 1]}
-            style={[styles.topFade, { height: headerHeight }]}
-            pointerEvents="none"
-          />
-        ) : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -618,9 +608,6 @@ const styles = StyleSheet.create({
   errorWrap: { paddingHorizontal: 10, paddingBottom: 6 },
 
   stage: { flex: 1 },
-  // Gradien di belakang navigation bar: pekat di ujung atas lalu memudar habis,
-  // supaya judul dan tombolnya tetap terbaca di atas pesan yang lewat.
-  topFade: { position: 'absolute', top: 0, left: 0, right: 0 },
   list: { flex: 1 },
   // Panel bawah melayang di atas daftar supaya pesan bisa lewat di belakangnya;
   // `bottom: 0` di sini mengikuti tepi dalam KeyboardAvoidingView, jadi tetap
@@ -632,7 +619,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 8,
     paddingHorizontal: COMPOSER_PAD,
-    paddingTop: 7,
+    paddingTop: COMPOSER_TOP,
   },
   // Panel pengetik iOS 26 lebih lega: jarak ke tepi layar dan antar-kontrolnya
   // mengikuti iMessage, dan kontrolnya sama-sama setinggi CONTROL_SIZE.
