@@ -44,7 +44,7 @@ const COMPOSER_PAD = 10;
 /** Tinggi tombol + dan kolom teks di panel pengetik iOS 26. */
 const CONTROL_SIZE = 40;
 /** Jarak tombol kirim ke tepi dalam kolom teks di iOS 26. */
-const SEND_INSET = 4;
+const SEND_INSET = 5;
 
 const GROUP_GAP = 60_000; // jeda yang memutus satu rentetan gelembung
 const DAY_GAP = 30 * 60_000; // jeda yang memunculkan penanda waktu
@@ -56,7 +56,14 @@ export function ChatScreen({ route, navigation }: Props) {
   const headerHeight = useHeaderHeight();
   const store = useStore();
   const contact = store.contactById(id);
-  const keyboardUp = useKeyboardVisible();
+  /**
+   * Daftar diturunkan langsung di dalam listener papan ketik, bukan lewat efek yang
+   * menunggu state berubah dulu — satu putaran render itu yang membuat gerakannya
+   * terasa menyusul di belakang animasi papan ketik.
+   */
+  const keyboardUp = useKeyboardVisible(() =>
+    listRef.current?.scrollToOffset({ offset: 0, animated: false })
+  );
 
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -81,16 +88,6 @@ export function ChatScreen({ route, navigation }: Props) {
     },
     []
   );
-
-  /**
-   * Turun ke pesan terbaru begitu papan ketik akan muncul. Dikerjakan langsung tanpa
-   * jeda: di iOS event ini datang sebelum papan ketiknya bergerak, jadi daftarnya
-   * ikut berpindah dalam animasi yang sama, bukan menyusul setelahnya.
-   */
-  useEffect(() => {
-    if (!keyboardUp) return;
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [keyboardUp]);
 
   // Sapaan pembuka hanya ditanam sekali, saat percakapan masih kosong.
   useEffect(() => {
@@ -401,7 +398,6 @@ export function ChatScreen({ route, navigation }: Props) {
          * visual berarti ke atas. Tanpa ini percakapan yang masih pendek menggumpal di
          * bawah dekat panel pengetik, bukan mengalir dari atas seperti sebelumnya.
          */
-        contentContainerStyle={styles.listContent}
         data={rows}
         // FlatList hanya menggambar ulang barisnya kalau `data` atau `extraData` berubah.
         // Tanpa ini, mengganti mode gelap/terang saat aplikasi terbuka meninggalkan
@@ -420,17 +416,6 @@ export function ChatScreen({ route, navigation }: Props) {
             ) : null}
             {showReceipt ? (
               <Text style={[styles.receipt, { color: theme.label2 }]}>Terkirim</Text>
-            ) : null}
-          </View>
-        }
-        ListFooterComponent={
-          <View style={styles.intro}>
-            <Avatar name={contact.name} color={contact.color} size={64} agent={contact.kind === 'agent'} />
-            <Text style={[styles.introName, { color: theme.label }]}>{contact.name}</Text>
-            {contact.persona.trim() ? (
-              <Text style={[styles.introPersona, { color: theme.label2 }]} numberOfLines={3}>
-                {contact.persona.trim()}
-              </Text>
             ) : null}
           </View>
         }
@@ -492,7 +477,7 @@ export function ChatScreen({ route, navigation }: Props) {
               isInteractive
             />
           ) : null}
-          <Ionicons name="add" size={22} color={theme.label2} />
+          <Ionicons name="add" size={SHAPE.glass ? 24 : 22} color={SHAPE.glass ? theme.label : theme.label2} />
         </Pressable>
 
         <View
@@ -537,7 +522,7 @@ export function ChatScreen({ route, navigation }: Props) {
               disabled={!draft.trim()}
             >
               {draft.trim() ? (
-                <Ionicons name="arrow-up" size={SHAPE.glass ? 21 : 18} color="#FFFFFF" />
+                <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
               ) : null}
             </Pressable>
           )}
@@ -564,10 +549,6 @@ const styles = StyleSheet.create({
   },
   peerPillFill: { borderRadius: 9 },
 
-  intro: { alignItems: 'center', paddingTop: 22, paddingBottom: 6, paddingHorizontal: 40, gap: 8 },
-  introName: { fontSize: 17, fontWeight: '600' },
-  introPersona: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
-
   footer: { paddingBottom: 10 },
   footerRow: { paddingHorizontal: 12, marginTop: 10 },
   receipt: { textAlign: 'right', fontSize: 11, paddingRight: 16, paddingTop: 3 },
@@ -575,7 +556,6 @@ const styles = StyleSheet.create({
   errorWrap: { paddingHorizontal: 10, paddingBottom: 6 },
 
   list: { flex: 1 },
-  listContent: { flexGrow: 1, justifyContent: 'flex-end' },
 
   composer: {
     flexDirection: 'row',
@@ -618,10 +598,10 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: 17, lineHeight: 22, paddingTop: 4, paddingBottom: 5, maxHeight: 120 },
   send: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  // Tinggi kolom teks = tombol kirim + jarak atas-bawahnya, jadi lingkarannya
-  // duduk pas di dalam pil tanpa menghitung ulang.
+  // Kapsul memanjang, bukan lingkaran. Tingginya diturunkan dari tinggi kolom teks
+  // dikurangi jarak atas-bawahnya, jadi selalu duduk pas di dalam pil.
   sendGlass: {
-    width: CONTROL_SIZE - SEND_INSET * 2,
+    width: CONTROL_SIZE,
     height: CONTROL_SIZE - SEND_INSET * 2,
     borderRadius: (CONTROL_SIZE - SEND_INSET * 2) / 2,
   },

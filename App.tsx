@@ -50,9 +50,17 @@ function Shell() {
       contentStyle: { backgroundColor: theme.bg },
     };
 
-    // Di iOS 26 latar header dibiarkan kosong supaya UIKit memasang Liquid Glass
-    // sendiri; menyetel backgroundColor akan memaksa header jadi opak.
-    if (SHAPE.glass) return shared;
+    // Di iOS 26 navigation bar-nya sendiri dibuat tembus pandang supaya menyatu
+    // dengan latar layar; tombol back dan tombol kanan tetap dapat kapsul Liquid
+    // Glass masing-masing dari UIKit.
+    if (SHAPE.glass) {
+      return {
+        ...shared,
+        headerStyle: { backgroundColor: 'transparent' },
+        headerLargeStyle: { backgroundColor: 'transparent' },
+        headerShadowVisible: false,
+      };
+    }
 
     // Di iOS 18 ke bawah, kedua tampilan navigation bar harus diwarnai sendiri.
     // `headerLargeStyle` yang dibiarkan kosong itulah yang membuat bagian atas
