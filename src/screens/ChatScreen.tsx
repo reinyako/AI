@@ -150,7 +150,18 @@ export function ChatScreen({ route, navigation }: Props) {
       // sendiri di dalam layar (lihat `topFade`), bukan lewat `headerBackground`:
       // opsi itu tidak dipotong ke area bar di native-stack, jadi gradiennya
       // melebar menutupi seluruh layar.
-      ...(SHAPE.glass ? { headerTransparent: true } : null),
+      ...(SHAPE.glass
+        ? {
+            headerTransparent: true,
+            /**
+             * iOS 26 secara bawaan memburamkan isi ScrollView yang lewat di bawah
+             * elemen bar. Pada daftar yang dibalik, efek itu menyelubungi seluruh
+             * percakapan, bukan cuma tepinya — gradien di sini sudah menangani
+             * peredupannya sendiri, jadi efek bawaannya dimatikan.
+             */
+            scrollEdgeEffects: { top: 'hidden' as const, bottom: 'hidden' as const },
+          }
+        : null),
     });
   }, [navigation, contact, theme]);
 
@@ -391,7 +402,13 @@ export function ChatScreen({ route, navigation }: Props) {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={headerHeight}
+      /**
+       * `keyboardVerticalOffset` memberi tahu KeyboardAvoidingView berapa banyak
+       * layar yang sudah dipakai di atasnya. Dengan `headerTransparent`, layar ini
+       * mulai dari ujung atas — header tidak memakan ruang — jadi menambahkan tinggi
+       * header lagi membuat panel pengetik terangkat sejauh itu dari papan ketik.
+       */
+      keyboardVerticalOffset={SHAPE.glass ? 0 : headerHeight}
     >
       {/*
         Wadah tanpa padding untuk menampung panel bawah yang melayang. Kalau panel
