@@ -96,7 +96,8 @@ export function TypingDots() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignSelf: 'flex-start', paddingLeft: 12 },
+  // Jarak ke tepi layar diatur wadahnya di ChatScreen, bukan di sini.
+  wrap: { alignSelf: 'flex-start' },
   bubble: {
     flexDirection: 'row',
     alignItems: 'center',

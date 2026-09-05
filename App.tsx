@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from './src/navigation';
@@ -18,6 +19,24 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function Shell() {
   const theme = useTheme();
+
+  /**
+   * Dinaikkan setiap aplikasi kembali ke depan, lalu ikut jadi dependensi
+   * `screenOptions` di bawah.
+   *
+   * Saat aplikasi ditinggalkan, iOS mengembalikan tampilan navigation bar ke bawaan
+   * sistem — yang tampak putih. React Navigation tidak mengirim apa-apa ke sisi
+   * native karena dari sisi JS tidak ada nilai yang berubah, jadi bar-nya tersangkut
+   * putih. Penghitung ini membuat opsi headernya dibentuk ulang dan dikirim lagi
+   * setiap kali aplikasi aktif.
+   */
+  const [resumeCount, setResumeCount] = useState(0);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') setResumeCount((count) => count + 1);
+    });
+    return () => subscription.remove();
+  }, []);
 
   /**
    * Tema navigasi dibangun dari palet aplikasi sendiri. Memakai DefaultTheme/DarkTheme
@@ -71,7 +90,9 @@ function Shell() {
       headerStyle: { backgroundColor: theme.nav },
       headerLargeStyle: { backgroundColor: theme.bg },
     };
-  }, [theme]);
+    // `resumeCount` sengaja jadi dependensi: nilainya tidak dipakai, tapi perubahannya
+    // membuat objek opsi ini dibentuk ulang sehingga dikirim lagi ke sisi native.
+  }, [theme, resumeCount]);
 
   return (
     <NavigationContainer theme={navTheme}>

@@ -59,10 +59,12 @@ const dark: typeof light = {
  * - `cardRadius`     sudut kartu daftar di layar pengaturan
  * - `composerInset`  jarak bawah panel pengetik saat papan ketik terbuka
  * - `fieldRadius`    sudut kolom teks dan tombol + di panel pengetik
+ * - `gutter`         jarak ke tepi layar; dipakai bersama oleh gelembung pesan dan
+ *                    panel pengetik supaya keduanya selalu segaris
  */
 export const SHAPE = LIQUID_GLASS
-  ? { glass: true, cardRadius: 20, composerInset: 8, fieldRadius: 20 }
-  : { glass: false, cardRadius: 12, composerInset: 0, fieldRadius: 18 };
+  ? { glass: true, cardRadius: 20, composerInset: 8, fieldRadius: 20, gutter: 16 }
+  : { glass: false, cardRadius: 12, composerInset: 0, fieldRadius: 18, gutter: 10 };
 
 const ThemeContext = createContext<typeof light | null>(null);
 

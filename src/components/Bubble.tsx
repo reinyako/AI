@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useTheme } from '../theme';
+import { SHAPE, useTheme } from '../theme';
 import type { Message } from '../types';
 
 type Props = {
@@ -113,7 +113,8 @@ export function Bubble({ message, tail, groupStart, fresh, onLongPress, onDouble
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', marginTop: 2, paddingHorizontal: 12 },
+  // Segaris dengan panel pengetik: keduanya memakai SHAPE.gutter.
+  row: { flexDirection: 'row', marginTop: 2, paddingHorizontal: SHAPE.gutter },
   groupStart: { marginTop: 10 },
   press: { maxWidth: '78%' },
   bubble: {

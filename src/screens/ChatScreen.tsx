@@ -1,17 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useHeaderHeight } from '@react-navigation/elements';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Animated, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,7 +15,7 @@ import { ErrorNotice } from '../components/Form';
 import { TypingDots } from '../components/TypingDots';
 import { showActions } from '../lib/actions';
 import { uid } from '../lib/format';
-import { useKeyboardVisible } from '../lib/keyboard';
+import { useKeyboardOffset } from '../lib/keyboard';
 import { buildSystemPrompt, resolveGen } from '../lib/gen';
 import { successFeedback, tapFeedback } from '../lib/haptics';
 import type { RootStackParamList } from '../navigation';
@@ -39,8 +29,6 @@ type Row =
   | { kind: 'day'; key: string; at: number }
   | { kind: 'msg'; key: string; message: Message; tail: boolean; groupStart: boolean; fresh: boolean };
 
-/** Padding kiri-kanan panel pengetik; dipakai juga di bawah saat papan ketik terbuka. */
-const COMPOSER_PAD = 10;
 
 /** Tinggi tombol + dan kolom teks di panel pengetik iOS 26. */
 const CONTROL_SIZE = 40;
@@ -56,7 +44,6 @@ export function ChatScreen({ route, navigation }: Props) {
   const { id } = route.params;
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
   const store = useStore();
   const contact = store.contactById(id);
   /**
@@ -64,7 +51,7 @@ export function ChatScreen({ route, navigation }: Props) {
    * menunggu state berubah dulu — satu putaran render itu yang membuat gerakannya
    * terasa menyusul di belakang animasi papan ketik.
    */
-  const keyboardUp = useKeyboardVisible(() =>
+  const { visible: keyboardUp, offset: keyboardOffset } = useKeyboardOffset(() =>
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
   );
 
@@ -406,18 +393,16 @@ export function ChatScreen({ route, navigation }: Props) {
   const showReceipt = !busy && lastMessage?.role === 'user';
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={headerHeight}
-    >
+    <View style={[styles.screen, { backgroundColor: theme.bg }]}>
       {/*
-        Wadah tanpa padding untuk menampung panel bawah yang melayang. Kalau panel
-        itu ditempel langsung ke KeyboardAvoidingView, `bottom: 0`-nya diukur dari
-        tepi luar — sehingga saat papan ketik membuka dan KAV menambah padding,
-        panelnya terdorong ke belakang papan ketik dan hilang dari layar.
+        Seluruh isi layar digeser ke atas setinggi papan ketik. Geserannya berjalan
+        di thread UI dengan durasi dari iOS, jadi daftar dan panel pengetik naik
+        seirama dengan papan ketiknya — bukan menyusul seperti waktu memakai
+        KeyboardAvoidingView, yang menata ulang seluruh pohon tiap animasi.
       */}
-      <View style={styles.stage}>
+      <Animated.View
+        style={[styles.stage, { transform: [{ translateY: Animated.multiply(keyboardOffset, -1) }] }]}
+      >
         <FlatList
           ref={listRef}
           style={styles.list}
@@ -500,7 +485,7 @@ export function ChatScreen({ route, navigation }: Props) {
                     borderTopColor: theme.separator,
                     backgroundColor: theme.nav,
                     // Saat papan ketik terbuka, jarak bawahnya disamakan dengan kiri-kanan.
-                    paddingBottom: keyboardUp ? COMPOSER_PAD : 8 + insets.bottom,
+                    paddingBottom: keyboardUp ? SHAPE.gutter : 8 + insets.bottom,
                   },
             ]}
           >
@@ -579,8 +564,8 @@ export function ChatScreen({ route, navigation }: Props) {
             </View>
           </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -602,28 +587,29 @@ const styles = StyleSheet.create({
   peerPillFill: { borderRadius: 9 },
 
   footer: { paddingBottom: 10 },
-  footerRow: { paddingHorizontal: 12, marginTop: 10 },
-  receipt: { textAlign: 'right', fontSize: 11, paddingRight: 16, paddingTop: 3 },
+  footerRow: { paddingHorizontal: SHAPE.gutter, marginTop: 10 },
+  receipt: { textAlign: 'right', fontSize: 11, paddingRight: SHAPE.gutter, paddingTop: 3 },
 
-  errorWrap: { paddingHorizontal: 10, paddingBottom: 6 },
+  errorWrap: { paddingHorizontal: SHAPE.gutter, paddingBottom: 6 },
 
+  // `overflow: hidden` supaya isi yang tergeser ke atas tidak menyembul keluar layar.
+  screen: { flex: 1, overflow: 'hidden' },
   stage: { flex: 1 },
   list: { flex: 1 },
-  // Panel bawah melayang di atas daftar supaya pesan bisa lewat di belakangnya;
-  // `bottom: 0` di sini mengikuti tepi dalam KeyboardAvoidingView, jadi tetap
-  // menempel di atas papan ketik saat terbuka.
+  // Panel bawah melayang di atas daftar supaya pesan bisa lewat di belakangnya.
+  // Ia ikut tergeser bersama seluruh isi layar saat papan ketik membuka.
   bottomOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    paddingHorizontal: COMPOSER_PAD,
+    paddingHorizontal: SHAPE.gutter,
     paddingTop: COMPOSER_TOP,
   },
   // Panel pengetik iOS 26 lebih lega: jarak ke tepi layar dan antar-kontrolnya
   // mengikuti iMessage, dan kontrolnya sama-sama setinggi CONTROL_SIZE.
-  composerGlass: { paddingHorizontal: 16, gap: 12 },
+  composerGlass: { gap: 12 },
   plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   // Tombol + setinggi kolom teks supaya dasarnya sejajar, dan `overflow` memotong
   // lapisan glass mengikuti bentuk bulatnya.
