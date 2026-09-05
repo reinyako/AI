@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from './Avatar';
+import { GlassPressable } from './GlassPressable';
 import { SHAPE, useTheme } from '../theme';
 import type { Contact } from '../types';
 
@@ -44,53 +44,38 @@ export function ChatHeader({ contact, onBack, onInfo, onLayout }: Props) {
         />
       ) : (
         <View
+          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: theme.nav, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator },
+            {
+              backgroundColor: theme.nav,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: theme.separator,
+            },
           ]}
-          pointerEvents="none"
         />
       )}
 
       <View style={styles.row}>
-        <Pressable style={[styles.side, styles.back]} onPress={onBack} hitSlop={8}>
-          {SHAPE.glass ? (
-            <GlassView
-              style={[StyleSheet.absoluteFill, styles.capsuleFill]}
-              glassEffectStyle="regular"
-              isInteractive
-            />
-          ) : null}
-          <Ionicons name="chevron-back" size={22} color={theme.blue} />
+        <GlassPressable onPress={onBack} style={styles.back} radius={CAPSULE / 2}>
+          <Ionicons name="chevron-back" size={ICON} color={theme.blue} />
           <Text style={[styles.backLabel, { color: theme.blue }]}>Pesan</Text>
-        </Pressable>
+        </GlassPressable>
 
-        <Pressable style={[styles.side, styles.info]} onPress={onInfo} hitSlop={8}>
-          {SHAPE.glass ? (
-            <GlassView
-              style={[StyleSheet.absoluteFill, styles.circleFill]}
-              glassEffectStyle="regular"
-              isInteractive
-            />
-          ) : null}
-          <Ionicons name="information-circle-outline" size={24} color={theme.blue} />
-        </Pressable>
+        <GlassPressable onPress={onInfo} style={styles.info} radius={CAPSULE / 2}>
+          <Ionicons name="information-circle-outline" size={ICON + 4} color={theme.blue} />
+        </GlassPressable>
 
         {/* Judul dipusatkan lepas dari lebar tombol kiri/kanan. */}
         <View style={styles.title} pointerEvents="box-none">
-          <Avatar name={contact.name} color={contact.color} size={SHAPE.glass ? 34 : 30} agent={agent} />
+          <Avatar name={contact.name} color={contact.color} size={AVATAR} agent={agent} />
           {SHAPE.glass ? (
-            <Pressable style={styles.peerPill} onPress={onInfo} hitSlop={6}>
-              <GlassView
-                style={[StyleSheet.absoluteFill, styles.peerPillFill]}
-                glassEffectStyle="regular"
-                isInteractive
-              />
+            <GlassPressable onPress={onInfo} style={styles.peerPill} radius={PILL / 2} hitSlop={6}>
               <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
                 {contact.name}
               </Text>
-              <Ionicons name="chevron-forward" size={10} color={theme.label2} />
-            </Pressable>
+              <Ionicons name="chevron-forward" size={12} color={theme.label2} />
+            </GlassPressable>
           ) : (
             <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
               {contact.name}
@@ -102,15 +87,21 @@ export function ChatHeader({ contact, onBack, onInfo, onLayout }: Props) {
   );
 }
 
-const CAPSULE_HEIGHT = 36;
+/** Tinggi kapsul back dan lingkaran info. */
+const CAPSULE = SHAPE.glass ? 44 : 36;
+const ICON = SHAPE.glass ? 24 : 22;
+const AVATAR = SHAPE.glass ? 44 : 30;
+/** Tinggi kapsul nama di bawah avatar. */
+const PILL = SHAPE.glass ? 22 : 14;
+const TITLE_GAP = 3;
 /**
- * Tinggi blok judul: avatar + jarak 2 + nama. Barisnya harus setinggi ini, kalau
- * tidak judulnya menyembul keluar dan bertabrakan dengan isi di baliknya.
+ * Tinggi blok judul. Barisnya harus setinggi ini, kalau tidak judulnya menyembul
+ * keluar dan bertabrakan dengan pesan yang lewat di belakangnya.
  */
-const TITLE_HEIGHT = SHAPE.glass ? 34 + 2 + 16 : 30 + 2 + 14;
+const TITLE_HEIGHT = AVATAR + TITLE_GAP + PILL;
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 8 },
+  header: { paddingBottom: SHAPE.glass ? 10 : 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -119,25 +110,22 @@ const styles = StyleSheet.create({
     minHeight: TITLE_HEIGHT,
   },
 
-  side: { flexDirection: 'row', alignItems: 'center', zIndex: 1 },
   back: {
-    height: CAPSULE_HEIGHT,
-    paddingLeft: 8,
-    paddingRight: 14,
-    borderRadius: CAPSULE_HEIGHT / 2,
-    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: CAPSULE,
+    paddingLeft: 10,
+    paddingRight: 16,
+    zIndex: 1,
   },
-  capsuleFill: { borderRadius: CAPSULE_HEIGHT / 2 },
   backLabel: { fontSize: 17, fontWeight: '600', marginLeft: 2 },
   info: {
-    width: CAPSULE_HEIGHT,
-    height: CAPSULE_HEIGHT,
-    borderRadius: CAPSULE_HEIGHT / 2,
-    justifyContent: 'center',
+    width: CAPSULE,
+    height: CAPSULE,
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'center',
+    zIndex: 1,
   },
-  circleFill: { borderRadius: CAPSULE_HEIGHT / 2 },
 
   // Dipusatkan dengan menutupi seluruh baris, jadi posisinya tidak ikut bergeser
   // saat label tombol kiri berubah panjang.
@@ -149,18 +137,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: TITLE_GAP,
   },
-  peerName: { fontSize: 12, lineHeight: 14, fontWeight: '500', maxWidth: 160 },
+  peerName: { fontSize: 14, lineHeight: 16, fontWeight: '600', maxWidth: 170 },
   peerPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 1,
-    paddingLeft: 9,
-    paddingRight: 6,
-    paddingVertical: 1,
-    borderRadius: 9,
-    overflow: 'hidden',
+    height: PILL,
+    paddingLeft: 10,
+    paddingRight: 7,
   },
-  peerPillFill: { borderRadius: 9 },
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { connectionFor, streamChat, validate, type WireMessage } from '../api/chat';
 import { Bubble } from '../components/Bubble';
 import { ChatHeader } from '../components/ChatHeader';
+import { GlassPressable } from '../components/GlassPressable';
 import { DayMark } from '../components/DayMark';
 import { ErrorNotice } from '../components/Form';
 import { TypingDots } from '../components/TypingDots';
@@ -453,11 +454,10 @@ export function ChatScreen({ route, navigation }: Props) {
                   },
             ]}
           >
-            <Pressable
-              style={[
-                styles.plus,
-                SHAPE.glass ? styles.plusGlass : { backgroundColor: theme.fill, marginBottom: 2 },
-              ]}
+            <GlassPressable
+              style={[styles.plus, SHAPE.glass ? styles.plusGlass : styles.plusPlain]}
+              radius={SHAPE.glass ? SHAPE.fieldRadius : 16}
+              fallbackColor={theme.fill}
               onPress={() =>
                 showActions(contact.name, [
                   { label: 'Ulangi balasan terakhir', run: regenerate },
@@ -469,15 +469,8 @@ export function ChatScreen({ route, navigation }: Props) {
                 ])
               }
             >
-              {SHAPE.glass ? (
-                <GlassView
-                  style={[StyleSheet.absoluteFill, styles.plusGlassFill]}
-                  glassEffectStyle="regular"
-                  isInteractive
-                />
-              ) : null}
               <Ionicons name="add" size={SHAPE.glass ? 24 : 22} color={SHAPE.glass ? theme.label : theme.label2} />
-            </Pressable>
+            </GlassPressable>
 
             <View
               style={[
@@ -504,26 +497,25 @@ export function ChatScreen({ route, navigation }: Props) {
                 onFocus={() => scrollToBottom()}
               />
               {busy ? (
-                <Pressable
-                  style={[styles.send, SHAPE.glass && styles.sendGlass, { backgroundColor: theme.label3 }]}
+                <GlassPressable
+                  style={[styles.send, SHAPE.glass && styles.sendGlass]}
+                  radius={SHAPE.glass ? (CONTROL_SIZE - SEND_INSET * 2) / 2 : 15}
+                  fallbackColor={theme.label3}
                   onPress={stop}
                 >
                   <Ionicons name="stop" size={SHAPE.glass ? 17 : 16} color="#FFFFFF" />
-                </Pressable>
+                </GlassPressable>
               ) : (
-                <Pressable
-                  style={[
-                    styles.send,
-                    SHAPE.glass && styles.sendGlass,
-                    { backgroundColor: draft.trim() ? theme.outgoing : 'transparent' },
-                  ]}
+                <GlassPressable
+                  style={[styles.send, SHAPE.glass && styles.sendGlass]}
+                  radius={SHAPE.glass ? (CONTROL_SIZE - SEND_INSET * 2) / 2 : 15}
+                  fallbackColor={draft.trim() ? theme.outgoing : 'transparent'}
                   onPress={send}
-                  disabled={!draft.trim()}
                 >
                   {draft.trim() ? (
                     <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
                   ) : null}
-                </Pressable>
+                </GlassPressable>
               )}
             </View>
           </View>
@@ -569,6 +561,7 @@ const styles = StyleSheet.create({
   // mengikuti iMessage, dan kontrolnya sama-sama setinggi CONTROL_SIZE.
   composerGlass: { gap: 12 },
   plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  plusPlain: { marginBottom: 2 },
   // Tombol + setinggi kolom teks supaya dasarnya sejajar, dan `overflow` memotong
   // lapisan glass mengikuti bentuk bulatnya.
   plusGlass: {
@@ -577,7 +570,6 @@ const styles = StyleSheet.create({
     borderRadius: SHAPE.fieldRadius,
     overflow: 'hidden',
   },
-  plusGlassFill: { borderRadius: SHAPE.fieldRadius },
   field: {
     flex: 1,
     flexDirection: 'row',
