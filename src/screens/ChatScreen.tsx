@@ -41,6 +41,11 @@ type Row =
 /** Padding kiri-kanan panel pengetik; dipakai juga di bawah saat papan ketik terbuka. */
 const COMPOSER_PAD = 10;
 
+/** Tinggi tombol + dan kolom teks di panel pengetik iOS 26. */
+const CONTROL_SIZE = 40;
+/** Jarak tombol kirim ke tepi dalam kolom teks di iOS 26. */
+const SEND_INSET = 4;
+
 const GROUP_GAP = 60_000; // jeda yang memutus satu rentetan gelembung
 const DAY_GAP = 30 * 60_000; // jeda yang memunculkan penanda waktu
 
@@ -78,14 +83,13 @@ export function ChatScreen({ route, navigation }: Props) {
   );
 
   /**
-   * Pengaman tambahan saat papan ketik muncul. Daftar yang dibalik seharusnya sudah
-   * tetap di pesan terbaru dengan sendirinya; ini hanya menegaskannya setelah tinggi
-   * daftar selesai berubah.
+   * Turun ke pesan terbaru begitu papan ketik akan muncul. Dikerjakan langsung tanpa
+   * jeda: di iOS event ini datang sebelum papan ketiknya bergerak, jadi daftarnya
+   * ikut berpindah dalam animasi yang sama, bukan menyusul setelahnya.
    */
   useEffect(() => {
     if (!keyboardUp) return;
-    const timer = setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: false }), 80);
-    return () => clearTimeout(timer);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [keyboardUp]);
 
   // Sapaan pembuka hanya ditanam sekali, saat percakapan masih kosong.
@@ -104,10 +108,34 @@ export function ChatScreen({ route, navigation }: Props) {
     navigation.setOptions({
       headerTitle: () => (
         <View style={styles.peer}>
-          <Avatar name={contact.name} color={contact.color} size={30} agent={contact.kind === 'agent'} />
-          <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
-            {contact.name}
-          </Text>
+          <Avatar
+            name={contact.name}
+            color={contact.color}
+            size={SHAPE.glass ? 34 : 30}
+            agent={contact.kind === 'agent'}
+          />
+          {SHAPE.glass ? (
+            // Di iOS 26 nama duduk di kapsul Liquid Glass dengan tanda panah,
+            // seperti tombol info kontak di iMessage.
+            <Pressable
+              style={styles.peerPill}
+              onPress={() => navigation.navigate('Contact', { id: contact.id })}
+            >
+              <GlassView
+                style={[StyleSheet.absoluteFill, styles.peerPillFill]}
+                glassEffectStyle="regular"
+                isInteractive
+              />
+              <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
+                {contact.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={10} color={theme.label2} />
+            </Pressable>
+          ) : (
+            <Text style={[styles.peerName, { color: theme.label }]} numberOfLines={1}>
+              {contact.name}
+            </Text>
+          )}
         </View>
       ),
       headerRight: () => (
@@ -425,12 +453,13 @@ export function ChatScreen({ route, navigation }: Props) {
         style={[
           styles.composer,
           SHAPE.glass
-            ? {
+            ? [
                 // Di iOS 26 tidak ada kartu pembungkus: tombol + dan kolom teks
                 // masing-masing berdiri sebagai gelembung Liquid Glass sendiri,
                 // seperti panel pengetik iMessage. Wadah ini hanya mengatur jarak.
-                paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8,
-              }
+                styles.composerGlass,
+                { paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8 },
+              ]
             : {
                 borderTopWidth: StyleSheet.hairlineWidth,
                 borderTopColor: theme.separator,
@@ -491,16 +520,25 @@ export function ChatScreen({ route, navigation }: Props) {
             onFocus={() => scrollToBottom()}
           />
           {busy ? (
-            <Pressable style={[styles.send, { backgroundColor: theme.label3 }]} onPress={stop}>
-              <Ionicons name="stop" size={16} color="#FFFFFF" />
+            <Pressable
+              style={[styles.send, SHAPE.glass && styles.sendGlass, { backgroundColor: theme.label3 }]}
+              onPress={stop}
+            >
+              <Ionicons name="stop" size={SHAPE.glass ? 17 : 16} color="#FFFFFF" />
             </Pressable>
           ) : (
             <Pressable
-              style={[styles.send, { backgroundColor: draft.trim() ? theme.outgoing : 'transparent' }]}
+              style={[
+                styles.send,
+                SHAPE.glass && styles.sendGlass,
+                { backgroundColor: draft.trim() ? theme.outgoing : 'transparent' },
+              ]}
               onPress={send}
               disabled={!draft.trim()}
             >
-              {draft.trim() ? <Ionicons name="arrow-up" size={18} color="#FFFFFF" /> : null}
+              {draft.trim() ? (
+                <Ionicons name="arrow-up" size={SHAPE.glass ? 21 : 18} color="#FFFFFF" />
+              ) : null}
             </Pressable>
           )}
         </View>
@@ -511,7 +549,20 @@ export function ChatScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   peer: { alignItems: 'center', gap: 2 },
-  peerName: { fontSize: 12, fontWeight: '500', maxWidth: 180 },
+  peerName: { fontSize: 12, lineHeight: 14, fontWeight: '500', maxWidth: 160 },
+  // Kapsul dibuat serapat mungkin: nav bar iOS punya tinggi tetap, jadi avatar
+  // 34 + kapsul ini harus tetap muat tanpa terpotong.
+  peerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+    paddingLeft: 9,
+    paddingRight: 6,
+    paddingVertical: 1,
+    borderRadius: 9,
+    overflow: 'hidden',
+  },
+  peerPillFill: { borderRadius: 9 },
 
   intro: { alignItems: 'center', paddingTop: 22, paddingBottom: 6, paddingHorizontal: 40, gap: 8 },
   introName: { fontSize: 17, fontWeight: '600' },
@@ -533,10 +584,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: COMPOSER_PAD,
     paddingTop: 7,
   },
+  // Panel pengetik iOS 26 lebih lega: jarak ke tepi layar dan antar-kontrolnya
+  // mengikuti iMessage, dan kontrolnya sama-sama setinggi CONTROL_SIZE.
+  composerGlass: { paddingHorizontal: 16, gap: 12 },
   plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  // Di iOS 26 tombol + setinggi kolom teks supaya dasarnya sejajar,
-  // dan `overflow` memotong lapisan glass mengikuti bentuk bulatnya.
-  plusGlass: { width: 36, height: 36, borderRadius: SHAPE.fieldRadius, overflow: 'hidden' },
+  // Tombol + setinggi kolom teks supaya dasarnya sejajar, dan `overflow` memotong
+  // lapisan glass mengikuti bentuk bulatnya.
+  plusGlass: {
+    width: CONTROL_SIZE,
+    height: CONTROL_SIZE,
+    borderRadius: SHAPE.fieldRadius,
+    overflow: 'hidden',
+  },
   plusGlassFill: { borderRadius: SHAPE.fieldRadius },
   field: {
     flex: 1,
@@ -549,7 +608,21 @@ const styles = StyleSheet.create({
     paddingRight: 3,
     paddingVertical: 3,
   },
-  fieldGlass: { borderColor: 'transparent', overflow: 'hidden' },
+  fieldGlass: {
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    minHeight: CONTROL_SIZE,
+    paddingLeft: 16,
+    paddingRight: SEND_INSET,
+    paddingVertical: SEND_INSET,
+  },
   input: { flex: 1, fontSize: 17, lineHeight: 22, paddingTop: 4, paddingBottom: 5, maxHeight: 120 },
   send: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  // Tinggi kolom teks = tombol kirim + jarak atas-bawahnya, jadi lingkarannya
+  // duduk pas di dalam pil tanpa menghitung ulang.
+  sendGlass: {
+    width: CONTROL_SIZE - SEND_INSET * 2,
+    height: CONTROL_SIZE - SEND_INSET * 2,
+    borderRadius: (CONTROL_SIZE - SEND_INSET * 2) / 2,
+  },
 });

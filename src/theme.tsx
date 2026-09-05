@@ -58,7 +58,7 @@ const dark: typeof light = {
  * - `fieldRadius`    sudut kolom teks dan tombol + di panel pengetik
  */
 export const SHAPE = LIQUID_GLASS
-  ? { glass: true, cardRadius: 20, composerInset: 8, fieldRadius: 18 }
+  ? { glass: true, cardRadius: 20, composerInset: 8, fieldRadius: 20 }
   : { glass: false, cardRadius: 12, composerInset: 0, fieldRadius: 18 };
 
 const ThemeContext = createContext<typeof light | null>(null);
