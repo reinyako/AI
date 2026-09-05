@@ -500,35 +500,40 @@ export function ChatScreen({ route, navigation }: Props) {
                 <GlassPressable
                   style={[styles.send, SHAPE.glass && styles.sendGlass]}
                   radius={SHAPE.glass ? (CONTROL_SIZE - SEND_INSET * 2) / 2 : 15}
+                  glass={false}
                   fallbackColor={theme.label3}
                   onPress={stop}
                 >
                   <Ionicons name="stop" size={SHAPE.glass ? 17 : 16} color="#FFFFFF" />
                 </GlassPressable>
-              ) : (
+              ) : draft.trim() ? (
                 <GlassPressable
                   style={[styles.send, SHAPE.glass && styles.sendGlass]}
                   radius={SHAPE.glass ? (CONTROL_SIZE - SEND_INSET * 2) / 2 : 15}
-                  fallbackColor={draft.trim() ? theme.outgoing : 'transparent'}
+                  glass={false}
+                  fallbackColor={theme.outgoing}
                   onPress={send}
                 >
-                  {draft.trim() ? (
-                    <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
-                  ) : null}
+                  <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
                 </GlassPressable>
-              )}
+              ) : null}
             </View>
           </View>
         </View>
-        <View style={styles.topOverlay}>
-          <ChatHeader
-            contact={contact}
-            onBack={() => navigation.goBack()}
-            onInfo={() => navigation.navigate('Contact', { id: contact.id })}
-            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
-          />
-        </View>
       </Animated.View>
+
+      {/*
+        Header sengaja di luar lapisan yang digeser: kalau ikut di dalamnya, ia
+        terangkat bersama isi layar saat papan ketik membuka dan hilang ke atas.
+      */}
+      <View style={styles.topOverlay}>
+        <ChatHeader
+          contact={contact}
+          onBack={() => navigation.goBack()}
+          onInfo={() => navigation.navigate('Contact', { id: contact.id })}
+          onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+        />
+      </View>
     </View>
   );
 }

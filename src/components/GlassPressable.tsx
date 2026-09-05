@@ -10,7 +10,13 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   /** Sudut kontrol; dipakai juga untuk memotong lapisan kacanya. */
   radius: number;
-  /** Latar pengganti di perangkat tanpa Liquid Glass. */
+  /**
+   * Pakai lapisan kaca? Bawaannya mengikuti perangkat. Setel `false` untuk kontrol
+   * yang memang harus berwarna pekat — tombol kirim, misalnya, yang warnanya justru
+   * hilang kalau ditimpa kaca.
+   */
+  glass?: boolean;
+  /** Latar saat lapisan kaca tidak dipakai. */
   fallbackColor?: string;
   hitSlop?: number;
   children: React.ReactNode;
@@ -24,7 +30,15 @@ type Props = {
  * jadi geraknya ditambahkan di sini — memakai transform dan opacity supaya bisa
  * dijalankan di thread UI, bukan di JS.
  */
-export function GlassPressable({ onPress, style, radius, fallbackColor, hitSlop = 8, children }: Props) {
+export function GlassPressable({
+  onPress,
+  style,
+  radius,
+  glass = SHAPE.glass,
+  fallbackColor,
+  hitSlop = 8,
+  children,
+}: Props) {
   const press = useRef(new Animated.Value(0)).current;
   const hover = useRef(new Animated.Value(0)).current;
 
@@ -58,7 +72,7 @@ export function GlassPressable({ onPress, style, radius, fallbackColor, hitSlop 
           },
         ]}
       >
-        {SHAPE.glass ? (
+        {glass ? (
           <GlassView
             style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
             glassEffectStyle="regular"
