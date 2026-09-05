@@ -1,5 +1,5 @@
-import React, { createContext, useContext } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance, AppState, useColorScheme } from 'react-native';
 
 import { LIQUID_GLASS } from './lib/platform';
 
@@ -10,6 +10,8 @@ export type Theme = ReturnType<typeof useTheme>;
 const light = {
   dark: false,
   bg: '#FFFFFF',
+  /** `bg` dengan alpha nol — ujung gradien harus warna yang sama, bukan `transparent`. */
+  bgFade: 'rgba(255,255,255,0)',
   groupedBg: '#F2F2F7',
   nav: '#F7F7F7',
   label: '#000000',
@@ -31,6 +33,7 @@ const light = {
 const dark: typeof light = {
   dark: true,
   bg: '#000000',
+  bgFade: 'rgba(0,0,0,0)',
   groupedBg: '#000000',
   nav: '#1C1C1E',
   label: '#FFFFFF',
@@ -70,7 +73,31 @@ const ThemeContext = createContext<typeof light | null>(null);
  * selagi aplikasi terbuka, sedangkan perubahan context menembus bailout itu.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const scheme = useColorScheme();
+  const [scheme, setScheme] = useState(() => Appearance.getColorScheme());
+
+  useEffect(() => {
+    /**
+     * Saat aplikasi ditinggalkan, iOS memotretnya untuk kartu app switcher dalam
+     * tema terang DAN gelap. Pemotretan itu mengirim perubahan skema warna yang
+     * bukan kemauan pengguna; kalau diikuti, aplikasi kembali dengan tema yang
+     * salah — dan navigation bar bisa tersangkut putih karena React Navigation
+     * melihat nilainya kembali sama dan tidak mengirim pembaruan ke sisi native.
+     *
+     * Karena itu perubahan hanya diterima selagi aplikasi benar-benar aktif, dan
+     * skemanya dibaca ulang setiap kali aplikasi kembali ke depan.
+     */
+    const appearance = Appearance.addChangeListener(({ colorScheme }) => {
+      if (AppState.currentState === 'active') setScheme(colorScheme);
+    });
+    const app = AppState.addEventListener('change', (next) => {
+      if (next === 'active') setScheme(Appearance.getColorScheme());
+    });
+    return () => {
+      appearance.remove();
+      app.remove();
+    };
+  }, []);
+
   const value = scheme === 'dark' ? dark : light;
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

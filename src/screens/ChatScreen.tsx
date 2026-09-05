@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView } from 'expo-glass-effect';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { connectionFor, streamChat, validate, type WireMessage } from '../api/chat';
@@ -68,6 +69,11 @@ export function ChatScreen({ route, navigation }: Props) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Tinggi panel bawah yang melayang. Dipakai sebagai ruang kosong di ujung daftar
+   * supaya pesan terakhir tidak tertutup panel pengetik.
+   */
+  const [bottomHeight, setBottomHeight] = useState(0);
 
   const listRef = useRef<FlatList<Row>>(null);
   const bufferRef = useRef('');
@@ -140,8 +146,25 @@ export function ChatScreen({ route, navigation }: Props) {
           <Ionicons name="information-circle-outline" size={24} color={theme.blue} />
         </Pressable>
       ),
+      // Di iOS 26 pesan mengalir di belakang navigation bar, dan bar-nya hanya
+      // diberi gradien. Bagian pekatnya ditahan sampai sekitar tengah bar dulu baru
+      // memudar habis: kalau langsung memudar dari ujung atas, judul dan tombolnya
+      // bertabrakan dengan teks pesan yang lewat di belakangnya.
+      ...(SHAPE.glass
+        ? {
+            headerTransparent: true,
+            headerBackground: () => (
+              <LinearGradient
+                colors={[theme.bg, theme.bg, theme.bgFade]}
+                locations={[0, 0.55, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+            ),
+          }
+        : null),
     });
-  }, [navigation, contact, theme.label, theme.blue]);
+  }, [navigation, contact, theme]);
 
   /**
    * Karena daftarnya `inverted`, pesan terbaru ada di offset 0 — jadi "turun ke
@@ -386,6 +409,14 @@ export function ChatScreen({ route, navigation }: Props) {
         ref={listRef}
         style={styles.list}
         /**
+         * Daftarnya inverted, jadi `paddingTop` muncul di bawah dan `paddingBottom`
+         * di atas. Ruang ini yang membuat pesan pertama dan terakhir tetap bisa
+         * digulir keluar dari balik panel yang melayang.
+         */
+        contentContainerStyle={
+          SHAPE.glass ? { paddingTop: bottomHeight, paddingBottom: headerHeight } : undefined
+        }
+        /**
          * Daftar dibalik seperti aplikasi chat pada umumnya: pesan terbaru ada di
          * offset 0. Dengan begitu "berada di paling bawah" jadi posisi diamnya —
          * saat papan ketik membuka dan daftarnya menyusut, offset 0 tetap offset 0,
@@ -393,11 +424,6 @@ export function ChatScreen({ route, navigation }: Props) {
          * `scrollToEnd`, yang gagal kalau ada baris yang belum pernah diukur.
          */
         inverted
-        /**
-         * Pada daftar inverted, `flex-end` mendorong isi ke ujung wadah — yang secara
-         * visual berarti ke atas. Tanpa ini percakapan yang masih pendek menggumpal di
-         * bawah dekat panel pengetik, bukan mengalir dari atas seperti sebelumnya.
-         */
         data={rows}
         // FlatList hanya menggambar ulang barisnya kalau `data` atau `extraData` berubah.
         // Tanpa ini, mengganti mode gelap/terang saat aplikasi terbuka meninggalkan
@@ -421,111 +447,125 @@ export function ChatScreen({ route, navigation }: Props) {
         }
       />
 
-      {error ? (
-        <View style={styles.errorWrap}>
-          <ErrorNotice
-            message={error}
-            onDismiss={() => setError(null)}
-            actions={[
-              { label: 'Coba lagi', run: retry },
-              { label: 'Buka Pengaturan', run: () => navigation.navigate('Settings') },
-            ]}
-          />
-        </View>
-      ) : null}
-
       <View
-        style={[
-          styles.composer,
-          SHAPE.glass
-            ? [
-                // Di iOS 26 tidak ada kartu pembungkus: tombol + dan kolom teks
-                // masing-masing berdiri sebagai gelembung Liquid Glass sendiri,
-                // seperti panel pengetik iMessage. Wadah ini hanya mengatur jarak.
-                styles.composerGlass,
-                { paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8 },
-              ]
-            : {
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: theme.separator,
-                backgroundColor: theme.nav,
-                // Saat papan ketik terbuka, jarak bawahnya disamakan dengan kiri-kanan.
-                paddingBottom: keyboardUp ? COMPOSER_PAD : 8 + insets.bottom,
-              },
-        ]}
+        style={SHAPE.glass ? styles.bottomOverlay : undefined}
+        onLayout={(event) => setBottomHeight(event.nativeEvent.layout.height)}
       >
-        <Pressable
-          style={[
-            styles.plus,
-            SHAPE.glass ? styles.plusGlass : { backgroundColor: theme.fill, marginBottom: 2 },
-          ]}
-          onPress={() =>
-            showActions(contact.name, [
-              { label: 'Ulangi balasan terakhir', run: regenerate },
-              {
-                label: 'Bersihkan percakapan',
-                destructive: true,
-                run: () => store.setMessages(contact.id, []),
-              },
-            ])
-          }
-        >
-          {SHAPE.glass ? (
-            <GlassView
-              style={[StyleSheet.absoluteFill, styles.plusGlassFill]}
-              glassEffectStyle="regular"
-              isInteractive
+        {SHAPE.glass ? (
+          <LinearGradient
+            colors={[theme.bgFade, theme.bg, theme.bg]}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+        ) : null}
+
+        {error ? (
+          <View style={styles.errorWrap}>
+            <ErrorNotice
+              message={error}
+              onDismiss={() => setError(null)}
+              actions={[
+                { label: 'Coba lagi', run: retry },
+                { label: 'Buka Pengaturan', run: () => navigation.navigate('Settings') },
+              ]}
             />
-          ) : null}
-          <Ionicons name="add" size={SHAPE.glass ? 24 : 22} color={SHAPE.glass ? theme.label : theme.label2} />
-        </Pressable>
+          </View>
+        ) : null}
 
         <View
           style={[
-            styles.field,
-            { borderRadius: SHAPE.fieldRadius },
+            styles.composer,
             SHAPE.glass
-              ? styles.fieldGlass
-              : { borderColor: theme.separator, backgroundColor: theme.bg },
+              ? [
+                  // Di iOS 26 tidak ada kartu pembungkus: tombol + dan kolom teks
+                  // masing-masing berdiri sebagai gelembung Liquid Glass sendiri,
+                  // seperti panel pengetik iMessage. Wadah ini hanya mengatur jarak.
+                  styles.composerGlass,
+                  { paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8 },
+                ]
+              : {
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: theme.separator,
+                  backgroundColor: theme.nav,
+                  // Saat papan ketik terbuka, jarak bawahnya disamakan dengan kiri-kanan.
+                  paddingBottom: keyboardUp ? COMPOSER_PAD : 8 + insets.bottom,
+                },
           ]}
         >
-          {SHAPE.glass ? (
-            <GlassView
-              style={[StyleSheet.absoluteFill, { borderRadius: SHAPE.fieldRadius }]}
-              glassEffectStyle="regular"
+          <Pressable
+            style={[
+              styles.plus,
+              SHAPE.glass ? styles.plusGlass : { backgroundColor: theme.fill, marginBottom: 2 },
+            ]}
+            onPress={() =>
+              showActions(contact.name, [
+                { label: 'Ulangi balasan terakhir', run: regenerate },
+                {
+                  label: 'Bersihkan percakapan',
+                  destructive: true,
+                  run: () => store.setMessages(contact.id, []),
+                },
+              ])
+            }
+          >
+            {SHAPE.glass ? (
+              <GlassView
+                style={[StyleSheet.absoluteFill, styles.plusGlassFill]}
+                glassEffectStyle="regular"
+                isInteractive
+              />
+            ) : null}
+            <Ionicons name="add" size={SHAPE.glass ? 24 : 22} color={SHAPE.glass ? theme.label : theme.label2} />
+          </Pressable>
+
+          <View
+            style={[
+              styles.field,
+              { borderRadius: SHAPE.fieldRadius },
+              SHAPE.glass
+                ? styles.fieldGlass
+                : { borderColor: theme.separator, backgroundColor: theme.bg },
+            ]}
+          >
+            {SHAPE.glass ? (
+              <GlassView
+                style={[StyleSheet.absoluteFill, { borderRadius: SHAPE.fieldRadius }]}
+                glassEffectStyle="regular"
+              />
+            ) : null}
+            <TextInput
+              style={[styles.input, { color: theme.label }]}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="iMessage"
+              placeholderTextColor={theme.label3}
+              multiline
+              onFocus={() => scrollToBottom()}
             />
-          ) : null}
-          <TextInput
-            style={[styles.input, { color: theme.label }]}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="iMessage"
-            placeholderTextColor={theme.label3}
-            multiline
-            onFocus={() => scrollToBottom()}
-          />
-          {busy ? (
-            <Pressable
-              style={[styles.send, SHAPE.glass && styles.sendGlass, { backgroundColor: theme.label3 }]}
-              onPress={stop}
-            >
-              <Ionicons name="stop" size={SHAPE.glass ? 17 : 16} color="#FFFFFF" />
-            </Pressable>
-          ) : (
-            <Pressable
-              style={[
-                styles.send,
-                SHAPE.glass && styles.sendGlass,
-                { backgroundColor: draft.trim() ? theme.outgoing : 'transparent' },
-              ]}
-              onPress={send}
-              disabled={!draft.trim()}
-            >
-              {draft.trim() ? (
-                <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
-              ) : null}
-            </Pressable>
-          )}
+            {busy ? (
+              <Pressable
+                style={[styles.send, SHAPE.glass && styles.sendGlass, { backgroundColor: theme.label3 }]}
+                onPress={stop}
+              >
+                <Ionicons name="stop" size={SHAPE.glass ? 17 : 16} color="#FFFFFF" />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[
+                  styles.send,
+                  SHAPE.glass && styles.sendGlass,
+                  { backgroundColor: draft.trim() ? theme.outgoing : 'transparent' },
+                ]}
+                onPress={send}
+                disabled={!draft.trim()}
+              >
+                {draft.trim() ? (
+                  <Ionicons name="arrow-up" size={SHAPE.glass ? 22 : 18} color="#FFFFFF" />
+                ) : null}
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -556,6 +596,10 @@ const styles = StyleSheet.create({
   errorWrap: { paddingHorizontal: 10, paddingBottom: 6 },
 
   list: { flex: 1 },
+  // Panel bawah melayang di atas daftar supaya pesan bisa lewat di belakangnya;
+  // `bottom: 0` di sini mengikuti tepi dalam KeyboardAvoidingView, jadi tetap
+  // menempel di atas papan ketik saat terbuka.
+  bottomOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 
   composer: {
     flexDirection: 'row',
