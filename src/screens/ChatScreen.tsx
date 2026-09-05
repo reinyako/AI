@@ -426,33 +426,25 @@ export function ChatScreen({ route, navigation }: Props) {
           styles.composer,
           SHAPE.glass
             ? {
-                // Panel mengambang: latarnya diisi GlassView di bawah, jadi di sini
-                // hanya bentuk dan jaraknya yang diatur. Saat papan ketik terbuka,
-                // jarak aman bawah tidak berlaku lagi, jadi jarak bawahnya disamakan
-                // dengan jarak kiri-kanan supaya panelnya terlihat pas.
-                marginHorizontal: SHAPE.composerInset,
-                marginBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8,
-                borderRadius: SHAPE.composerRadius,
-                paddingBottom: 7,
+                // Di iOS 26 tidak ada kartu pembungkus: tombol + dan kolom teks
+                // masing-masing berdiri sebagai gelembung Liquid Glass sendiri,
+                // seperti panel pengetik iMessage. Wadah ini hanya mengatur jarak.
+                paddingBottom: keyboardUp ? SHAPE.composerInset : insets.bottom > 0 ? insets.bottom : 8,
               }
             : {
                 borderTopWidth: StyleSheet.hairlineWidth,
                 borderTopColor: theme.separator,
                 backgroundColor: theme.nav,
-                // Sama seperti versi glass: disamakan dengan padding kiri-kanan.
+                // Saat papan ketik terbuka, jarak bawahnya disamakan dengan kiri-kanan.
                 paddingBottom: keyboardUp ? COMPOSER_PAD : 8 + insets.bottom,
               },
         ]}
       >
-        {SHAPE.glass ? (
-          <GlassView
-            style={[StyleSheet.absoluteFill, { borderRadius: SHAPE.composerRadius }]}
-            glassEffectStyle="regular"
-          />
-        ) : null}
-
         <Pressable
-          style={[styles.plus, { backgroundColor: theme.fill }]}
+          style={[
+            styles.plus,
+            SHAPE.glass ? styles.plusGlass : { backgroundColor: theme.fill, marginBottom: 2 },
+          ]}
           onPress={() =>
             showActions(contact.name, [
               { label: 'Ulangi balasan terakhir', run: regenerate },
@@ -464,6 +456,13 @@ export function ChatScreen({ route, navigation }: Props) {
             ])
           }
         >
+          {SHAPE.glass ? (
+            <GlassView
+              style={[StyleSheet.absoluteFill, styles.plusGlassFill]}
+              glassEffectStyle="regular"
+              isInteractive
+            />
+          ) : null}
           <Ionicons name="add" size={22} color={theme.label2} />
         </Pressable>
 
@@ -472,10 +471,16 @@ export function ChatScreen({ route, navigation }: Props) {
             styles.field,
             { borderRadius: SHAPE.fieldRadius },
             SHAPE.glass
-              ? { borderColor: 'transparent', backgroundColor: theme.fill }
+              ? styles.fieldGlass
               : { borderColor: theme.separator, backgroundColor: theme.bg },
           ]}
         >
+          {SHAPE.glass ? (
+            <GlassView
+              style={[StyleSheet.absoluteFill, { borderRadius: SHAPE.fieldRadius }]}
+              glassEffectStyle="regular"
+            />
+          ) : null}
           <TextInput
             style={[styles.input, { color: theme.label }]}
             value={draft}
@@ -527,9 +532,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: COMPOSER_PAD,
     paddingTop: 7,
-    overflow: 'hidden',
   },
-  plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  plus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  // Di iOS 26 tombol + setinggi kolom teks supaya dasarnya sejajar,
+  // dan `overflow` memotong lapisan glass mengikuti bentuk bulatnya.
+  plusGlass: { width: 36, height: 36, borderRadius: SHAPE.fieldRadius, overflow: 'hidden' },
+  plusGlassFill: { borderRadius: SHAPE.fieldRadius },
   field: {
     flex: 1,
     flexDirection: 'row',
@@ -541,6 +549,7 @@ const styles = StyleSheet.create({
     paddingRight: 3,
     paddingVertical: 3,
   },
+  fieldGlass: { borderColor: 'transparent', overflow: 'hidden' },
   input: { flex: 1, fontSize: 17, lineHeight: 22, paddingTop: 4, paddingBottom: 5, maxHeight: 120 },
   send: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });

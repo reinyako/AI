@@ -51,12 +51,15 @@ const dark: typeof light = {
 
 /**
  * Bentuk yang ikut versi iOS. Liquid Glass (iOS 26) memakai sudut yang jauh lebih
- * membulat dan panel yang mengambang, sedangkan iOS 18 memakai kartu rapat dengan
- * garis pemisah setipis mungkin.
+ * membulat, sedangkan iOS 18 memakai kartu rapat dengan garis pemisah setipis mungkin.
+ *
+ * - `cardRadius`     sudut kartu daftar di layar pengaturan
+ * - `composerInset`  jarak bawah panel pengetik saat papan ketik terbuka
+ * - `fieldRadius`    sudut kolom teks dan tombol + di panel pengetik
  */
 export const SHAPE = LIQUID_GLASS
-  ? { glass: true, cardRadius: 20, composerRadius: 26, composerInset: 8, fieldRadius: 20 }
-  : { glass: false, cardRadius: 12, composerRadius: 0, composerInset: 0, fieldRadius: 18 };
+  ? { glass: true, cardRadius: 20, composerInset: 8, fieldRadius: 18 }
+  : { glass: false, cardRadius: 12, composerInset: 0, fieldRadius: 18 };
 
 const ThemeContext = createContext<typeof light | null>(null);
 
