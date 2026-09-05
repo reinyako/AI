@@ -85,23 +85,34 @@ export function ThemeProvider({
   const [scheme, setScheme] = useState(() => Appearance.getColorScheme());
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
     /**
-     * Saat aplikasi ditinggalkan, iOS memotretnya untuk kartu app switcher dalam
-     * tema terang DAN gelap. Pemotretan itu mengirim perubahan skema warna yang
-     * bukan kemauan pengguna; kalau diikuti, aplikasi kembali dengan tema yang
-     * salah — dan navigation bar bisa tersangkut putih karena React Navigation
-     * melihat nilainya kembali sama dan tidak mengirim pembaruan ke sisi native.
+     * Skema tidak langsung dipakai begitu berubah, tapi dipastikan ulang setelah
+     * jeda pendek.
      *
-     * Karena itu perubahan hanya diterima selagi aplikasi benar-benar aktif, dan
-     * skemanya dibaca ulang setiap kali aplikasi kembali ke depan.
+     * Saat aplikasi ditinggalkan, iOS memotretnya untuk kartu app switcher dalam
+     * tema terang DAN gelap. Pemotretan itu memicu perubahan skema yang bukan
+     * kemauan pengguna dan langsung kembali lagi. Dengan dibaca ulang setelah
+     * sempat mengendap, yang sekejap begitu tidak pernah menempel, sementara
+     * pergantian tema yang sungguhan tetap terpakai.
+     *
+     * Cara ini dipilih daripada menyaring lewat status aplikasi: `AppState` tidak
+     * selalu bernilai `active` di setiap platform, dan penyaringan seperti itu
+     * malah ikut memblokir pergantian tema yang sah.
      */
-    const appearance = Appearance.addChangeListener(({ colorScheme }) => {
-      if (AppState.currentState === 'active') setScheme(colorScheme);
-    });
+    const confirmScheme = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setScheme(Appearance.getColorScheme()), 400);
+    };
+
+    const appearance = Appearance.addChangeListener(confirmScheme);
     const app = AppState.addEventListener('change', (next) => {
-      if (next === 'active') setScheme(Appearance.getColorScheme());
+      if (next === 'active') confirmScheme();
     });
+
     return () => {
+      clearTimeout(timer);
       appearance.remove();
       app.remove();
     };
