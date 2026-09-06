@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, FlatList, Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { GlassView } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,12 @@ import { connectionFor, streamChat, validate, type WireMessage } from '../api/ch
 import { Bubble } from '../components/Bubble';
 import { ChatHeader } from '../components/ChatHeader';
 import { GlassPressable } from '../components/GlassPressable';
+import {
+  MessageMenu,
+  type BubbleFrame,
+  type MenuAction,
+  type MenuTarget,
+} from '../components/MessageMenu';
 import { DayMark } from '../components/DayMark';
 import { ErrorNotice } from '../components/Form';
 import { TypingDots } from '../components/TypingDots';
@@ -66,6 +72,8 @@ export function ChatScreen({ route, navigation }: Props) {
   const [bottomHeight, setBottomHeight] = useState(0);
   /** Tinggi header yang melayang, dipakai sebagai ruang di ujung atas daftar. */
   const [headerHeight, setHeaderHeight] = useState(0);
+  /** Pesan yang sedang ditekan-tahan, beserta letaknya di layar. */
+  const [menu, setMenu] = useState<MenuTarget | null>(null);
 
   const listRef = useRef<FlatList<Row>>(null);
   const bufferRef = useRef('');
@@ -295,31 +303,44 @@ export function ChatScreen({ route, navigation }: Props) {
     return history;
   };
 
-  const toggleReaction = (messageId: string) => {
-    tapFeedback();
+  /**
+   * Memasang tapback. Menekan tapback yang sedang terpakai akan melepasnya lagi,
+   * sama seperti iMessage.
+   */
+  const setReaction = (messageId: string, emoji: string) => {
     store.setMessages(
       contact.id,
       contact.messages.map((message) =>
-        message.id === messageId ? { ...message, reaction: message.reaction ? null : '❤️' } : message
+        message.id === messageId
+          ? { ...message, reaction: message.reaction === emoji ? null : emoji }
+          : message
       )
     );
   };
 
-  const openMessageMenu = (message: Message) => {
+  /** Ketuk dua kali tetap jalan pintas untuk hati, tanpa membuka menu. */
+  const toggleReaction = (messageId: string) => {
+    tapFeedback();
+    setReaction(messageId, '❤️');
+  };
+
+  const openMessageMenu = (message: Message, frame: BubbleFrame) => {
     const isLast = contact.messages.at(-1)?.id === message.id;
-    showActions(message.text.slice(0, 80), [
-      { label: 'Salin', run: () => Clipboard.setStringAsync(message.text) },
+
+    const actions: MenuAction[] = [
       {
-        label: message.reaction ? 'Hapus reaksi' : 'Beri reaksi ❤️',
-        run: () => toggleReaction(message.id),
+        label: 'Salin',
+        icon: 'copy-outline',
+        run: () => Clipboard.setStringAsync(message.text),
       },
       ...(message.role === 'assistant' && isLast && !busy
-        ? [{ label: 'Ulangi balasan', run: regenerate }]
+        ? [{ label: 'Ulangi balasan', icon: 'refresh' as const, run: regenerate }]
         : []),
       ...(message.role === 'user'
         ? [
             {
               label: 'Edit & kirim ulang',
+              icon: 'create-outline' as const,
               run: () => {
                 setDraft(message.text);
                 truncateFrom(message.id);
@@ -329,10 +350,18 @@ export function ChatScreen({ route, navigation }: Props) {
         : []),
       {
         label: 'Hapus dari sini ke bawah',
+        icon: 'trash-outline',
         destructive: true,
+        separated: true,
         run: () => truncateFrom(message.id),
       },
-    ]);
+    ];
+
+    tapFeedback();
+    // Papan ketik harus turun dulu: menunya memakai letak gelembung yang sudah
+    // diukur, dan layar yang bergeser setelahnya membuat ukuran itu meleset.
+    Keyboard.dismiss();
+    setMenu({ message, frame, actions });
   };
 
   const renderRow = ({ item }: { item: Row }) => {
@@ -343,7 +372,7 @@ export function ChatScreen({ route, navigation }: Props) {
         tail={item.tail}
         groupStart={item.groupStart}
         fresh={item.fresh}
-        onLongPress={() => openMessageMenu(item.message)}
+        onLongPress={(frame) => openMessageMenu(item.message, frame)}
         onDoubleTap={() => toggleReaction(item.message.id)}
       />
     );
@@ -534,6 +563,18 @@ export function ChatScreen({ route, navigation }: Props) {
           onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
         />
       </View>
+
+      {/* Digambar paling akhir supaya menutupi header dan panel pengetik juga. */}
+      {menu ? (
+        <MessageMenu
+          target={menu}
+          onClose={() => setMenu(null)}
+          onReact={(emoji) => {
+            setReaction(menu.message.id, emoji);
+            setMenu(null);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

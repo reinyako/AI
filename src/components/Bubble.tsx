@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { BubbleFrame } from './MessageMenu';
 import { RichText } from './RichText';
 import { SHAPE, useTheme } from '../theme';
 import type { Message } from '../types';
@@ -13,7 +14,8 @@ type Props = {
   groupStart: boolean;
   /** Pesan yang baru saja masuk atau terkirim — muncul dengan pantulan kecil. */
   fresh?: boolean;
-  onLongPress?: () => void;
+  /** Dipanggil dengan letak gelembung di layar, supaya menunya bisa menimpanya pas. */
+  onLongPress?: (frame: BubbleFrame) => void;
   onDoubleTap?: () => void;
 };
 
@@ -22,6 +24,7 @@ const DOUBLE_TAP_MS = 280;
 export function Bubble({ message, tail, groupStart, fresh, onLongPress, onDoubleTap }: Props) {
   const theme = useTheme();
   const lastTap = useRef(0);
+  const bubbleRef = useRef<View>(null);
   const outgoing = message.role === 'user';
   const appear = useRef(new Animated.Value(fresh ? 0 : 1)).current;
 
@@ -42,6 +45,17 @@ export function Bubble({ message, tail, groupStart, fresh, onLongPress, onDouble
   const background = outgoing ? theme.outgoing : theme.incoming;
   const foreground = outgoing ? theme.outgoingText : theme.incomingText;
 
+  /**
+   * Menu tekan-tahan digambar melayang di atas seluruh layar, jadi ia butuh letak
+   * gelembung ini dalam koordinat layar — bukan koordinat di dalam daftar.
+   */
+  const handleLongPress = () => {
+    if (!onLongPress) return;
+    bubbleRef.current?.measureInWindow((x, y, width, height) =>
+      onLongPress({ x, y, width, height })
+    );
+  };
+
   const handlePress = () => {
     const now = Date.now();
     if (now - lastTap.current < DOUBLE_TAP_MS) {
@@ -60,8 +74,9 @@ export function Bubble({ message, tail, groupStart, fresh, onLongPress, onDouble
         groupStart && styles.groupStart,
       ]}
     >
-      <Pressable onPress={handlePress} onLongPress={onLongPress} delayLongPress={280} style={styles.press}>
+      <Pressable onPress={handlePress} onLongPress={handleLongPress} delayLongPress={280} style={styles.press}>
         <Animated.View
+          ref={bubbleRef}
           style={[
             styles.bubble,
             { backgroundColor: background },
