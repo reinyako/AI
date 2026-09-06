@@ -69,26 +69,23 @@ function Shell() {
       contentStyle: { backgroundColor: theme.bg },
     };
 
-    // Di iOS 26 navigation bar-nya sendiri dibuat tembus pandang supaya menyatu
-    // dengan latar layar; tombol back dan tombol kanan tetap dapat kapsul Liquid
-    // Glass masing-masing dari UIKit.
-    if (SHAPE.glass) {
-      return {
-        ...shared,
-        headerStyle: { backgroundColor: 'transparent' },
-        headerLargeStyle: { backgroundColor: 'transparent' },
-        headerShadowVisible: false,
-      };
-    }
-
-    // Di iOS 18 ke bawah, kedua tampilan navigation bar harus diwarnai sendiri.
-    // `headerLargeStyle` yang dibiarkan kosong itulah yang membuat bagian atas
-    // berkedip putih saat kembali dari layar chat walau memakai tema gelap:
-    // tampilan large-title jatuh ke latar sistem, bukan ke tema aplikasi.
+    // Kedua tampilan navigation bar selalu diwarnai sendiri, di versi iOS mana pun.
+    //
+    // Sebelumnya di iOS 26 keduanya diisi `transparent` supaya bar-nya menyatu dengan
+    // latar layar. Itulah sumber strip putih di bagian atas. Warna beralpha nol
+    // membuat react-native-screens memanggil `configureWithTransparentBackground`
+    // lalu menyetel `backgroundColor = nil`, jadi bar-nya benar-benar tembus pandang
+    // dan yang terlihat adalah window di belakangnya - dan window itu bukan kita yang
+    // cat, warnanya ikut trait sistem. Terbukti lewat pengujian: saat palet aplikasi
+    // dipaksa magenta, badan layar ikut magenta tapi strip atasnya tetap putih.
+    //
+    // Layar chat sudah tidak memakai navigation bar bawaan (`headerShown: false`,
+    // diganti ChatHeader sendiri), jadi tidak ada lagi yang butuh bar transparan.
     return {
       ...shared,
       headerStyle: { backgroundColor: theme.nav },
       headerLargeStyle: { backgroundColor: theme.bg },
+      headerShadowVisible: !SHAPE.glass,
     };
     // `resumeCount` sengaja jadi dependensi: nilainya tidak dipakai, tapi perubahannya
     // membuat objek opsi ini dibentuk ulang sehingga dikirim lagi ke sisi native.
